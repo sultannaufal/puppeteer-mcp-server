@@ -20,6 +20,19 @@ export const commonSchemas = {
   allowDangerous: Joi.boolean().optional(),
 };
 
+// Mouse-specific validation schemas
+export const mouseSchemas = {
+  coordinates: Joi.object({
+    x: Joi.number().integer().min(0).max(4096).required(),
+    y: Joi.number().integer().min(0).max(4096).required(),
+  }),
+  mouseButton: Joi.string().valid('left', 'right', 'middle', 'back', 'forward').default('left'),
+  steps: Joi.number().integer().min(1).max(100).default(1),
+  clickCount: Joi.number().integer().min(1).max(3).default(1),
+  delay: Joi.number().integer().min(0).max(5000).default(0),
+  wheelDelta: Joi.number().integer().min(-1000).max(1000).default(0),
+};
+
 // Tool-specific validation schemas
 export const toolSchemas = {
   puppeteer_navigate: Joi.object({
@@ -57,6 +70,49 @@ export const toolSchemas = {
   puppeteer_evaluate: Joi.object({
     script: commonSchemas.script,
   }),
+
+  // Advanced Mouse Tools
+  puppeteer_mouse_move: Joi.object({
+    x: mouseSchemas.coordinates.extract('x'),
+    y: mouseSchemas.coordinates.extract('y'),
+    steps: mouseSchemas.steps.optional(),
+  }),
+
+  puppeteer_mouse_click: Joi.object({
+    x: mouseSchemas.coordinates.extract('x'),
+    y: mouseSchemas.coordinates.extract('y'),
+    button: mouseSchemas.mouseButton.optional(),
+    clickCount: mouseSchemas.clickCount.optional(),
+    delay: mouseSchemas.delay.optional(),
+  }),
+
+  puppeteer_mouse_down: Joi.object({
+    x: mouseSchemas.coordinates.extract('x'),
+    y: mouseSchemas.coordinates.extract('y'),
+    button: mouseSchemas.mouseButton.optional(),
+  }),
+
+  puppeteer_mouse_up: Joi.object({
+    x: mouseSchemas.coordinates.extract('x'),
+    y: mouseSchemas.coordinates.extract('y'),
+    button: mouseSchemas.mouseButton.optional(),
+  }),
+
+  puppeteer_mouse_wheel: Joi.object({
+    x: mouseSchemas.coordinates.extract('x'),
+    y: mouseSchemas.coordinates.extract('y'),
+    deltaX: mouseSchemas.wheelDelta.optional(),
+    deltaY: mouseSchemas.wheelDelta.optional(),
+  }),
+
+  puppeteer_mouse_drag: Joi.object({
+    startX: mouseSchemas.coordinates.extract('x'),
+    startY: mouseSchemas.coordinates.extract('y'),
+    endX: mouseSchemas.coordinates.extract('x'),
+    endY: mouseSchemas.coordinates.extract('y'),
+    steps: mouseSchemas.steps.optional(),
+    delay: mouseSchemas.delay.optional(),
+  }),
 };
 
 // MCP protocol validation schemas
@@ -85,7 +141,13 @@ export const mcpSchemas = {
       'puppeteer_fill',
       'puppeteer_select',
       'puppeteer_hover',
-      'puppeteer_evaluate'
+      'puppeteer_evaluate',
+      'puppeteer_mouse_move',
+      'puppeteer_mouse_click',
+      'puppeteer_mouse_down',
+      'puppeteer_mouse_up',
+      'puppeteer_mouse_wheel',
+      'puppeteer_mouse_drag'
     ).required(),
     arguments: Joi.object().optional(),
   }),
@@ -368,6 +430,70 @@ export function validateFileName(name: string): string {
 }
 
 /**
+ * Validate coordinate safety and bounds
+ */
+export function validateCoordinateSafety(x: number, y: number, bounds?: { width: number; height: number }): void {
+  // Check if coordinates are valid numbers
+  if (typeof x !== 'number' || typeof y !== 'number') {
+    throw new ValidationError('Coordinates must be numbers');
+  }
+  
+  if (!Number.isFinite(x) || !Number.isFinite(y)) {
+    throw new ValidationError('Coordinates must be finite numbers');
+  }
+  
+  // Check if coordinates are non-negative
+  if (x < 0 || y < 0) {
+    throw new ValidationError('Coordinates must be non-negative');
+  }
+  
+  // Check maximum bounds (reasonable viewport limits)
+  if (x > 4096 || y > 4096) {
+    throw new ValidationError('Coordinates exceed maximum allowed values (4096x4096)');
+  }
+  
+  // Check against specific viewport bounds if provided
+  if (bounds) {
+    if (x > bounds.width || y > bounds.height) {
+      throw new ValidationError(`Coordinates (${x}, ${y}) exceed viewport bounds (${bounds.width}x${bounds.height})`);
+    }
+  }
+}
+
+/**
+ * Validate mouse button safety
+ */
+export function validateMouseButtonSafety(button: string): void {
+  const validButtons = ['left', 'right', 'middle', 'back', 'forward'];
+  if (!validButtons.includes(button)) {
+    throw new ValidationError(`Invalid mouse button: ${button}. Valid buttons: ${validButtons.join(', ')}`);
+  }
+}
+
+/**
+ * Validate wheel delta values
+ */
+export function validateWheelDeltaSafety(deltaX?: number, deltaY?: number): void {
+  if (deltaX !== undefined) {
+    if (typeof deltaX !== 'number' || !Number.isFinite(deltaX)) {
+      throw new ValidationError('deltaX must be a finite number');
+    }
+    if (Math.abs(deltaX) > 1000) {
+      throw new ValidationError('deltaX must be between -1000 and 1000');
+    }
+  }
+  
+  if (deltaY !== undefined) {
+    if (typeof deltaY !== 'number' || !Number.isFinite(deltaY)) {
+      throw new ValidationError('deltaY must be a finite number');
+    }
+    if (Math.abs(deltaY) > 1000) {
+      throw new ValidationError('deltaY must be between -1000 and 1000');
+    }
+  }
+}
+
+/**
  * Export validation functions for easy access
  */
 export const validate = {
@@ -380,6 +506,9 @@ export const validate = {
   scriptSafety: validateScriptSafety,
   launchOptionsSafety: validateLaunchOptionsSafety,
   fileName: validateFileName,
+  coordinateSafety: validateCoordinateSafety,
+  mouseButtonSafety: validateMouseButtonSafety,
+  wheelDeltaSafety: validateWheelDeltaSafety,
 };
 
 export default validate;

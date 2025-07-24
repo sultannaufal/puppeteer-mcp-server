@@ -41,6 +41,63 @@ export interface EvaluateParams {
   script: string;
 }
 
+// Advanced Mouse Tool Parameters
+export interface MouseMoveParams {
+  x: number;
+  y: number;
+  steps?: number;
+}
+
+export interface MouseClickParams {
+  x: number;
+  y: number;
+  button?: 'left' | 'right' | 'middle' | 'back' | 'forward';
+  clickCount?: number;
+  delay?: number;
+}
+
+export interface MouseDownParams {
+  x: number;
+  y: number;
+  button?: 'left' | 'right' | 'middle' | 'back' | 'forward';
+}
+
+export interface MouseUpParams {
+  x: number;
+  y: number;
+  button?: 'left' | 'right' | 'middle' | 'back' | 'forward';
+}
+
+export interface MouseWheelParams {
+  x: number;
+  y: number;
+  deltaX?: number;
+  deltaY?: number;
+}
+
+export interface MouseDragParams {
+  startX: number;
+  startY: number;
+  endX: number;
+  endY: number;
+  steps?: number;
+  delay?: number;
+}
+
+// Mouse Button Types
+export type MouseButton = 'left' | 'right' | 'middle' | 'back' | 'forward';
+
+// Coordinate validation types
+export interface Coordinates {
+  x: number;
+  y: number;
+}
+
+export interface ViewportBounds {
+  width: number;
+  height: number;
+}
+
 // Browser Management Types
 export interface BrowserInstance {
   browser: Browser;
@@ -227,6 +284,18 @@ export class EvaluationError extends PuppeteerMCPError {
   }
 }
 
+export class MouseError extends PuppeteerMCPError {
+  constructor(message: string, details?: any) {
+    super(message, 'MOUSE_ERROR', details);
+  }
+}
+
+export class CoordinateError extends PuppeteerMCPError {
+  constructor(message: string, details?: any) {
+    super(message, 'COORDINATE_ERROR', details);
+  }
+}
+
 // Type guards
 export function isValidSelector(selector: string): boolean {
   try {
@@ -248,15 +317,49 @@ export function isValidUrl(url: string): boolean {
   }
 }
 
+export function isValidCoordinates(x: number, y: number, bounds?: ViewportBounds): boolean {
+  // Check if coordinates are numbers
+  if (typeof x !== 'number' || typeof y !== 'number') return false;
+  
+  // Check if coordinates are finite
+  if (!Number.isFinite(x) || !Number.isFinite(y)) return false;
+  
+  // Check if coordinates are non-negative
+  if (x < 0 || y < 0) return false;
+  
+  // Check bounds if provided
+  if (bounds) {
+    if (x > bounds.width || y > bounds.height) return false;
+  }
+  
+  return true;
+}
+
+export function isValidMouseButton(button: string): button is MouseButton {
+  return ['left', 'right', 'middle', 'back', 'forward'].includes(button);
+}
+
+export function isValidWheelDelta(deltaX?: number, deltaY?: number): boolean {
+  if (deltaX !== undefined && (!Number.isFinite(deltaX) || Math.abs(deltaX) > 1000)) return false;
+  if (deltaY !== undefined && (!Number.isFinite(deltaY) || Math.abs(deltaY) > 1000)) return false;
+  return true;
+}
+
 // Utility types
-export type PuppeteerToolName = 
+export type PuppeteerToolName =
   | 'puppeteer_navigate'
   | 'puppeteer_screenshot'
   | 'puppeteer_click'
   | 'puppeteer_fill'
   | 'puppeteer_select'
   | 'puppeteer_hover'
-  | 'puppeteer_evaluate';
+  | 'puppeteer_evaluate'
+  | 'puppeteer_mouse_move'
+  | 'puppeteer_mouse_click'
+  | 'puppeteer_mouse_down'
+  | 'puppeteer_mouse_up'
+  | 'puppeteer_mouse_wheel'
+  | 'puppeteer_mouse_drag';
 
 export interface ToolParams {
   puppeteer_navigate: NavigateParams;
@@ -266,4 +369,10 @@ export interface ToolParams {
   puppeteer_select: SelectParams;
   puppeteer_hover: HoverParams;
   puppeteer_evaluate: EvaluateParams;
+  puppeteer_mouse_move: MouseMoveParams;
+  puppeteer_mouse_click: MouseClickParams;
+  puppeteer_mouse_down: MouseDownParams;
+  puppeteer_mouse_up: MouseUpParams;
+  puppeteer_mouse_wheel: MouseWheelParams;
+  puppeteer_mouse_drag: MouseDragParams;
 }
