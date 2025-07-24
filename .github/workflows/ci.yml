@@ -53,6 +53,7 @@ jobs:
         context: .
         push: false
         tags: puppeteer-mcp-server:test
+        load: true
         cache-from: type=gha
         cache-to: type=gha,mode=max
 
@@ -61,7 +62,7 @@ jobs:
         docker run --rm -d --name test-container -p 3000:3000 \
           -e API_KEY=test-key \
           puppeteer-mcp-server:test
-        sleep 10
+        sleep 15
         curl -f http://localhost:3000/health || exit 1
         docker stop test-container
 

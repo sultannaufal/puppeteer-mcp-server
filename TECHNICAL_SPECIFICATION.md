@@ -56,7 +56,7 @@ interface MCPMessage {
 
 ## Available Tools
 
-Based on the archived Puppeteer MCP server, the following tools will be implemented:
+The server implements 16 comprehensive Puppeteer tools including core browser automation, advanced mouse interactions, and authentication cookie management:
 
 ### 1. puppeteer_navigate
 - **Purpose**: Navigate to a URL
@@ -101,6 +101,35 @@ Based on the archived Puppeteer MCP server, the following tools will be implemen
 - **Parameters**:
   - `script` (string, required): JavaScript code to execute
 
+### 8. puppeteer_get_cookies
+- **Purpose**: Retrieve cookies for authentication state analysis
+- **Parameters**:
+  - `urls` (array, optional): URLs to get cookies for
+  - `names` (array, optional): Specific cookie names to retrieve
+  - `domain` (string, optional): Filter cookies by domain
+
+### 9. puppeteer_set_cookies
+- **Purpose**: Set authentication cookies (session tokens, JWT, OAuth)
+- **Parameters**:
+  - `cookies` (array, required): Array of cookie objects with properties:
+    - `name` (string, required): Cookie name
+    - `value` (string, required): Cookie value
+    - `domain` (string, optional): Cookie domain
+    - `path` (string, optional): Cookie path
+    - `secure` (boolean, optional): Secure flag
+    - `httpOnly` (boolean, optional): HttpOnly flag
+    - `sameSite` (string, optional): SameSite attribute
+    - `expires` (number, optional): Expiration timestamp
+
+### 10. puppeteer_delete_cookies
+- **Purpose**: Delete cookies for logout and cleanup scenarios
+- **Parameters**:
+  - `cookies` (array, required): Array of cookie deletion requests:
+    - `name` (string, required): Cookie name or "*" for all cookies
+    - `domain` (string, optional): Cookie domain
+    - `path` (string, optional): Cookie path
+    - `url` (string, optional): URL for cookie context
+
 ## Security Features
 
 ### API Key Authentication
@@ -113,6 +142,14 @@ Based on the archived Puppeteer MCP server, the following tools will be implemen
 - **Sandbox**: Puppeteer runs in sandboxed mode
 - **Dangerous Args**: Filtered and controlled via allowDangerous flag
 - **Resource Limits**: Memory and CPU limits via Docker
+
+### Cookie Security
+- **Authentication Focus**: Optimized for secure authentication cookie handling
+- **Security Defaults**: Automatic secure defaults for auth cookies (HttpOnly, Secure, SameSite)
+- **Validation**: Comprehensive cookie parameter validation and sanitization
+- **XSS Prevention**: HttpOnly flag enforcement for authentication cookies
+- **CSRF Protection**: SameSite attribute validation and recommendations
+- **Domain Validation**: Strict domain validation to prevent cookie injection
 
 ## Environment Configuration
 

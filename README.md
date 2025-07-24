@@ -8,7 +8,7 @@
 [![Build Status](https://github.com/sultannaufal/puppeteer-mcp-server/workflows/CI/badge.svg)](https://github.com/sultannaufal/puppeteer-mcp-server/actions)
 [![MCP Protocol](https://img.shields.io/badge/MCP-2.0-orange.svg)](https://modelcontextprotocol.io/)
 
-A **self-hosted Puppeteer MCP (Model Context Protocol) server** with remote SSE access, API key authentication, and Docker deployment. This server provides **13 comprehensive Puppeteer tools** including advanced mouse interactions, with enhanced security, monitoring, and production-ready features.
+A **self-hosted Puppeteer MCP (Model Context Protocol) server** with remote SSE access, API key authentication, and Docker deployment. This server provides **16 comprehensive Puppeteer tools** including advanced mouse interactions and authentication cookie management, with enhanced security, monitoring, and production-ready features.
 
 ## 🌟 Features
 
@@ -30,6 +30,11 @@ A **self-hosted Puppeteer MCP (Model Context Protocol) server** with remote SSE 
 - **`puppeteer_mouse_up`** - Mouse button release for drag operations
 - **`puppeteer_mouse_wheel`** - Mouse wheel scrolling with deltaX/deltaY control
 - **`puppeteer_mouse_drag`** - Complete drag and drop functionality
+
+#### **🍪 Cookie Management Tools**
+- **`puppeteer_get_cookies`** - Retrieve cookies for authentication state analysis
+- **`puppeteer_set_cookies`** - Set authentication cookies (session tokens, JWT, OAuth)
+- **`puppeteer_delete_cookies`** - Delete cookies for logout and cleanup scenarios
 
 ### 🚀 **Production Ready**
 - **Docker Containerization** - Multi-stage builds with optimization
@@ -415,6 +420,76 @@ Authorization: Bearer your-api-key
 }
 ```
 
+### 🍪 Cookie Management Tool Examples
+
+#### Set Authentication Cookies
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 10,
+  "method": "tools/call",
+  "params": {
+    "name": "puppeteer_set_cookies",
+    "arguments": {
+      "cookies": [
+        {
+          "name": "session_token",
+          "value": "abc123def456...",
+          "domain": ".example.com",
+          "httpOnly": true,
+          "secure": true,
+          "sameSite": "Lax"
+        },
+        {
+          "name": "csrf_token",
+          "value": "xyz789uvw012...",
+          "domain": ".example.com",
+          "path": "/api",
+          "secure": true,
+          "sameSite": "Strict"
+        }
+      ]
+    }
+  }
+}
+```
+
+#### Get Authentication State
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 11,
+  "method": "tools/call",
+  "params": {
+    "name": "puppeteer_get_cookies",
+    "arguments": {
+      "names": ["session_token", "csrf_token"],
+      "domain": ".example.com"
+    }
+  }
+}
+```
+
+#### Logout and Cookie Cleanup
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 12,
+  "method": "tools/call",
+  "params": {
+    "name": "puppeteer_delete_cookies",
+    "arguments": {
+      "cookies": [
+        {
+          "name": "*",
+          "domain": ".example.com"
+        }
+      ]
+    }
+  }
+}
+```
+
 ## 🐳 Deployment Options
 
 ### Coolify Deployment (Easiest)
@@ -575,6 +650,9 @@ puppeteer-mcp-server/
 │   │   ├── mouse-up.ts     # 🖱️ Mouse button release
 │   │   ├── mouse-wheel.ts  # 🖱️ Mouse wheel scrolling
 │   │   ├── mouse-drag.ts   # 🖱️ Drag and drop operations
+│   │   ├── get-cookies.ts  # 🍪 Cookie retrieval and analysis
+│   │   ├── set-cookies.ts  # 🍪 Authentication cookie setting
+│   │   ├── delete-cookies.ts # 🍪 Cookie deletion and cleanup
 │   │   └── index.ts        # Tool exports
 │   ├── services/           # Core services
 │   │   ├── browser.ts      # Browser lifecycle management

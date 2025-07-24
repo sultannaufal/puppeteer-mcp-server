@@ -113,6 +113,44 @@ export const toolSchemas = {
     steps: mouseSchemas.steps.optional(),
     delay: mouseSchemas.delay.optional(),
   }),
+
+  // Cookie Management Tools
+  puppeteer_get_cookies: Joi.object({
+    urls: Joi.array().items(commonSchemas.url).optional(),
+    names: Joi.array().items(Joi.string().min(1).max(255).pattern(/^[a-zA-Z0-9_-]+$/)).optional(),
+    domain: Joi.string().min(1).max(255).pattern(/^\.?[a-zA-Z0-9.-]+$/).optional(),
+  }),
+
+  puppeteer_set_cookies: Joi.object({
+    cookies: Joi.array().items(
+      Joi.object({
+        name: Joi.string().min(1).max(255).pattern(/^[a-zA-Z0-9_-]+$/).required(),
+        value: Joi.string().max(10000).required(),
+        url: commonSchemas.url.optional(),
+        domain: Joi.string().min(1).max(255).pattern(/^\.?[a-zA-Z0-9.-]+$/).optional(),
+        path: Joi.string().min(1).max(1000).default('/').optional(),
+        secure: Joi.boolean().optional(),
+        httpOnly: Joi.boolean().optional(),
+        sameSite: Joi.string().valid('Strict', 'Lax', 'None').optional(),
+        expires: Joi.number().integer().min(0).optional(),
+        priority: Joi.string().valid('Low', 'Medium', 'High').optional(),
+        sameParty: Joi.boolean().optional(),
+        sourceScheme: Joi.string().valid('Unset', 'NonSecure', 'Secure').optional(),
+        sourcePort: Joi.number().integer().min(1).max(65535).optional(),
+      })
+    ).min(1).required(),
+  }),
+
+  puppeteer_delete_cookies: Joi.object({
+    cookies: Joi.array().items(
+      Joi.object({
+        name: Joi.string().min(1).max(255).pattern(/^(\*|[a-zA-Z0-9_-]+)$/).required(),
+        url: commonSchemas.url.optional(),
+        domain: Joi.string().min(1).max(255).pattern(/^\.?[a-zA-Z0-9.-]+$/).optional(),
+        path: Joi.string().min(1).max(1000).default('/').optional(),
+      })
+    ).min(1).required(),
+  }),
 };
 
 // MCP protocol validation schemas
@@ -147,7 +185,10 @@ export const mcpSchemas = {
       'puppeteer_mouse_down',
       'puppeteer_mouse_up',
       'puppeteer_mouse_wheel',
-      'puppeteer_mouse_drag'
+      'puppeteer_mouse_drag',
+      'puppeteer_get_cookies',
+      'puppeteer_set_cookies',
+      'puppeteer_delete_cookies'
     ).required(),
     arguments: Joi.object().optional(),
   }),

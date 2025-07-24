@@ -32,7 +32,7 @@
     "docker",
     "typescript"
   ],
-  "author": "Your Name",
+  "author": "Sultan Naufal Abdillah",
   "license": "MIT",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.1",

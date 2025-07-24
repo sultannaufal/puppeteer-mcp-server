@@ -84,6 +84,62 @@ export interface MouseDragParams {
   delay?: number;
 }
 
+// Cookie Management Parameters
+export interface GetCookiesParams {
+  urls?: string[];
+  names?: string[];
+  domain?: string;
+}
+
+export interface SetCookiesParams {
+  cookies: CookieParam[];
+}
+
+export interface DeleteCookiesParams {
+  cookies: DeleteCookieParam[];
+}
+
+// Cookie Data Structures
+export interface CookieParam {
+  name: string;
+  value: string;
+  url?: string;
+  domain?: string;
+  path?: string;
+  secure?: boolean;
+  httpOnly?: boolean;
+  sameSite?: 'Strict' | 'Lax' | 'None';
+  expires?: number;
+  priority?: 'Low' | 'Medium' | 'High';
+  sameParty?: boolean;
+  sourceScheme?: 'Unset' | 'NonSecure' | 'Secure';
+  sourcePort?: number;
+}
+
+export interface DeleteCookieParam {
+  name: string;
+  url?: string;
+  domain?: string;
+  path?: string;
+}
+
+export interface CookieInfo {
+  name: string;
+  value: string;
+  domain: string;
+  path: string;
+  expires: number;
+  size: number;
+  httpOnly: boolean;
+  secure: boolean;
+  session: boolean;
+  sameSite?: 'Strict' | 'Lax' | 'None';
+  priority?: 'Low' | 'Medium' | 'High';
+  sameParty?: boolean;
+  sourceScheme?: 'Unset' | 'NonSecure' | 'Secure';
+  sourcePort?: number;
+}
+
 // Mouse Button Types
 export type MouseButton = 'left' | 'right' | 'middle' | 'back' | 'forward';
 
@@ -296,6 +352,12 @@ export class CoordinateError extends PuppeteerMCPError {
   }
 }
 
+export class CookieError extends PuppeteerMCPError {
+  constructor(message: string, details?: any) {
+    super(message, 'COOKIE_ERROR', details);
+  }
+}
+
 // Type guards
 export function isValidSelector(selector: string): boolean {
   try {
@@ -359,7 +421,10 @@ export type PuppeteerToolName =
   | 'puppeteer_mouse_down'
   | 'puppeteer_mouse_up'
   | 'puppeteer_mouse_wheel'
-  | 'puppeteer_mouse_drag';
+  | 'puppeteer_mouse_drag'
+  | 'puppeteer_get_cookies'
+  | 'puppeteer_set_cookies'
+  | 'puppeteer_delete_cookies';
 
 export interface ToolParams {
   puppeteer_navigate: NavigateParams;
@@ -375,4 +440,7 @@ export interface ToolParams {
   puppeteer_mouse_up: MouseUpParams;
   puppeteer_mouse_wheel: MouseWheelParams;
   puppeteer_mouse_drag: MouseDragParams;
+  puppeteer_get_cookies: GetCookiesParams;
+  puppeteer_set_cookies: SetCookiesParams;
+  puppeteer_delete_cookies: DeleteCookiesParams;
 }
