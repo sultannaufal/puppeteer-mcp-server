@@ -1,0 +1,128 @@
+# Coolify-compatible Docker Compose configuration
+# This file is optimized for deployment on Coolify platform
+# https://coolify.io/docs/knowledge-base/docker/compose
+
+services:
+  puppeteer-mcp-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    restart: unless-stopped
+    
+    # Coolify will automatically handle port mapping and URL generation
+    # No need to expose ports explicitly - Coolify manages this
+    expose:
+      - "3000"
+    
+    environment:
+      # Server Configuration
+      - NODE_ENV=production
+      - PORT=3000
+      - HOST=0.0.0.0
+      
+      # Coolify Magic Variables - these will be auto-generated
+      # SERVICE_FQDN_PUPPETEER_MCP_SERVER will contain the full domain
+      # SERVICE_URL_PUPPETEER_MCP_SERVER will contain the full URL
+      
+      # Authentication - Coolify will generate a secure API key
+      # You can override this in Coolify's environment variables UI
+      - API_KEY=${SERVICE_PASSWORD_PUPPETEER_MCP_SERVER}
+      
+      # Puppeteer Configuration - optimized for containerized deployment
+      - PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
+      - PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
+      - PUPPETEER_ARGS=--no-sandbox --disable-setuid-sandbox --disable-dev-shm-usage --disable-accelerated-2d-canvas --no-first-run --no-zygote --disable-gpu --disable-background-timer-throttling --disable-backgrounding-occluded-windows --disable-renderer-backgrounding
+      
+      # Browser Configuration
+      - BROWSER_TIMEOUT=${BROWSER_TIMEOUT:-30000}
+      - PAGE_TIMEOUT=${PAGE_TIMEOUT:-30000}
+      - NAVIGATION_TIMEOUT=${NAVIGATION_TIMEOUT:-30000}
+      
+      # Logging Configuration
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - LOG_FORMAT=${LOG_FORMAT:-json}
+      
+      # Security Configuration
+      - ALLOWED_DOMAINS=${ALLOWED_DOMAINS:-}
+      - BLOCKED_DOMAINS=${BLOCKED_DOMAINS:-}
+      - MAX_PAGES=${MAX_PAGES:-10}
+      
+      # Performance Configuration
+      - MEMORY_LIMIT=${MEMORY_LIMIT:-512}
+      - CPU_LIMIT=${CPU_LIMIT:-1}
+      
+      # Rate Limiting
+      - RATE_LIMIT_WINDOW=${RATE_LIMIT_WINDOW:-900000}
+      - RATE_LIMIT_MAX=${RATE_LIMIT_MAX:-100}
+      
+      # CORS Configuration
+      - CORS_ORIGIN=${CORS_ORIGIN:-*}
+      
+      # Health Check Configuration
+      - HEALTH_CHECK_ENABLED=${HEALTH_CHECK_ENABLED:-true}
+      - HEALTH_CHECK_PATH=${HEALTH_CHECK_PATH:-/health}
+      
+      # Screenshot Configuration
+      - SCREENSHOT_DEFAULT_WIDTH=${SCREENSHOT_DEFAULT_WIDTH:-800}
+      - SCREENSHOT_DEFAULT_HEIGHT=${SCREENSHOT_DEFAULT_HEIGHT:-600}
+      - SCREENSHOT_MAX_WIDTH=${SCREENSHOT_MAX_WIDTH:-1920}
+      - SCREENSHOT_MAX_HEIGHT=${SCREENSHOT_MAX_HEIGHT:-1080}
+      - SCREENSHOT_QUALITY=${SCREENSHOT_QUALITY:-80}
+    
+    volumes:
+      # Persistent storage for logs
+      - type: bind
+        source: ./logs
+        target: /app/logs
+        bind:
+          create_host_path: true
+        # Coolify directive to create directory
+        is_directory: true
+      
+      # Persistent storage for screenshots
+      - type: bind
+        source: ./screenshots
+        target: /app/screenshots
+        bind:
+          create_host_path: true
+        # Coolify directive to create directory
+        is_directory: true
+      
+      # Shared memory for Chromium - essential for Puppeteer
+      - type: bind
+        source: /dev/shm
+        target: /dev/shm
+    
+    # Resource limits - Coolify will respect these
+    deploy:
+      resources:
+        limits:
+          memory: ${MEMORY_LIMIT:-512}M
+          cpus: '${CPU_LIMIT:-1}'
+        reservations:
+          memory: 256M
+          cpus: '0.5'
+    
+    # Security options required for Puppeteer/Chromium
+    security_opt:
+      - seccomp:unconfined
+    
+    # Health check - Coolify will use this for monitoring
+    healthcheck:
+      test: ["CMD", "node", "-e", "const http = require('http'); const options = { hostname: 'localhost', port: 3000, path: '/health', timeout: 5000 }; const req = http.request(options, (res) => { if (res.statusCode === 200) process.exit(0); else process.exit(1); }); req.on('error', () => process.exit(1)); req.on('timeout', () => process.exit(1)); req.end();"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    
+    # Labels for Coolify (optional but helpful for organization)
+    labels:
+      - "coolify.managed=true"
+      - "coolify.version=4.0"
+      - "coolify.type=application"
+      - "coolify.name=puppeteer-mcp-server"
+      - "coolify.description=Self-hosted Puppeteer MCP Server with remote SSE access"
+
+# Note: Coolify automatically manages networks, so we don't need to define them
+# Coolify will create and manage the network for inter-service communication

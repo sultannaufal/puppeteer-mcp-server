@@ -300,6 +300,33 @@ Authorization: Bearer your-api-key
 
 ## 🐳 Deployment Options
 
+### Coolify Deployment (Easiest)
+
+**One-click deployment with automatic HTTPS and monitoring**
+
+```bash
+# 1. Use the Coolify-optimized compose file
+# Repository: https://github.com/sultannaufal/puppeteer-mcp-server.git
+# Docker Compose File: docker-compose.coolify.yml
+
+# 2. Coolify auto-generates:
+# - Secure API key (SERVICE_PASSWORD_PUPPETEER_MCP_SERVER)
+# - Domain and SSL certificate
+# - Health monitoring and auto-restart
+
+# 3. Test your deployment
+curl https://your-app.coolify.domain.com/health
+```
+
+**Benefits:**
+- ✅ **Zero Configuration** - Works out of the box
+- ✅ **Automatic HTTPS** - SSL certificates managed automatically
+- ✅ **Built-in Monitoring** - Health checks and resource monitoring
+- ✅ **Easy Updates** - Git-based deployments with automatic rebuilds
+- ✅ **Cost Effective** - Self-hosted alternative to cloud platforms
+
+[📖 **Full Coolify Guide**](DEPLOYMENT.md#coolify-deployment)
+
 ### Docker Deployment (Recommended)
 
 #### Using Docker Compose

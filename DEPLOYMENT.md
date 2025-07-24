@@ -145,6 +145,156 @@ RATE_LIMIT_WINDOW=900000
 RATE_LIMIT_MAX=100
 ```
 
+### Coolify Deployment
+
+**Coolify** is a self-hosted alternative to Heroku/Netlify/Vercel that makes deployment simple and secure.
+
+#### Prerequisites
+
+- Coolify instance running (v4.0+)
+- Git repository access
+- Domain name (optional but recommended)
+
+#### Quick Deployment
+
+1. **Create New Project in Coolify**
+   - Go to your Coolify dashboard
+   - Click "New Project" → "Public Repository"
+   - Enter repository URL: `https://github.com/sultannaufal/puppeteer-mcp-server.git`
+
+2. **Configure Build Settings**
+   - **Build Pack**: Docker
+   - **Docker Compose File**: `docker-compose.coolify.yml`
+   - **Port**: 3000 (auto-detected)
+
+3. **Environment Variables**
+   
+   Coolify will automatically generate secure values for:
+   - `SERVICE_PASSWORD_PUPPETEER_MCP_SERVER` (used as API_KEY)
+   - `SERVICE_FQDN_PUPPETEER_MCP_SERVER` (your domain)
+   - `SERVICE_URL_PUPPETEER_MCP_SERVER` (full URL)
+
+   Optional variables you can set:
+   ```bash
+   # Performance tuning
+   MEMORY_LIMIT=1024
+   CPU_LIMIT=2
+   MAX_PAGES=15
+   
+   # Logging
+   LOG_LEVEL=info
+   
+   # Browser settings
+   BROWSER_TIMEOUT=45000
+   
+   # Rate limiting
+   RATE_LIMIT_MAX=200
+   RATE_LIMIT_WINDOW=900000
+   ```
+
+4. **Deploy**
+   - Click "Deploy"
+   - Coolify will build and deploy automatically
+   - Access your server at the generated URL
+
+#### Coolify-Specific Features
+
+**Automatic SSL/TLS**
+- Coolify automatically provisions SSL certificates
+- HTTPS is enabled by default
+
+**Domain Management**
+- Custom domains supported
+- Automatic DNS configuration
+- Wildcard domains available
+
+**Monitoring**
+- Built-in health checks using `/health` endpoint
+- Resource usage monitoring
+- Automatic restarts on failure
+
+**Scaling**
+- Easy horizontal scaling through Coolify UI
+- Resource limit adjustments
+- Load balancing included
+
+#### Storage Configuration
+
+The Coolify compose file includes persistent storage for:
+
+```yaml
+volumes:
+  # Application logs
+  - type: bind
+    source: ./logs
+    target: /app/logs
+    is_directory: true
+  
+  # Screenshots storage
+  - type: bind
+    source: ./screenshots
+    target: /app/screenshots
+    is_directory: true
+```
+
+#### Testing Your Deployment
+
+```bash
+# Get your Coolify-generated URL and API key from the dashboard
+export COOLIFY_URL="https://your-app.coolify.domain.com"
+export API_KEY="your-generated-api-key"
+
+# Test health endpoint
+curl $COOLIFY_URL/health
+
+# Test MCP endpoint
+curl -H "Authorization: Bearer $API_KEY" \
+     -H "Content-Type: application/json" \
+     -X POST $COOLIFY_URL/mcp \
+     -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'
+
+# Test SSE endpoint
+curl -H "Authorization: Bearer $API_KEY" \
+     -H "Accept: text/event-stream" \
+     $COOLIFY_URL/sse
+```
+
+#### Coolify Advantages
+
+- **Zero Configuration**: Works out of the box
+- **Automatic HTTPS**: SSL certificates managed automatically
+- **Built-in Monitoring**: Health checks and resource monitoring
+- **Easy Updates**: Git-based deployments with automatic rebuilds
+- **Cost Effective**: Self-hosted alternative to cloud platforms
+- **Security**: Automatic API key generation and secure defaults
+
+#### Troubleshooting Coolify Deployment
+
+**Build Failures**
+```bash
+# Check build logs in Coolify dashboard
+# Common issues:
+# - Dockerfile not found: Ensure docker-compose.coolify.yml is in root
+# - Memory limits: Increase build resources in Coolify settings
+```
+
+**Runtime Issues**
+```bash
+# Check application logs in Coolify dashboard
+# Common issues:
+# - Browser launch failures: Coolify handles this automatically
+# - Memory issues: Adjust MEMORY_LIMIT environment variable
+```
+
+**Network Issues**
+```bash
+# Coolify handles networking automatically
+# If issues persist:
+# - Check domain configuration in Coolify
+# - Verify SSL certificate status
+# - Test internal connectivity
+```
+
 ## ☁️ Cloud Deployments
 
 ### AWS ECS (Elastic Container Service)
