@@ -41,23 +41,23 @@ router.get('/sse', async (req: AuthenticatedRequest, res: Response) => {
     // Create SSE transport using MCP SDK
     const transport = new SSEServerTransport('/messages', res);
     
-    // Store transport for session management
-    activeTransports.set(req.sessionId, transport);
+    // Store transport using the transport's sessionId (which the client will use)
+    activeTransports.set(transport.sessionId, transport);
 
     // Handle client disconnect
     res.on('close', () => {
-      activeTransports.delete(req.sessionId!);
+      activeTransports.delete(transport.sessionId);
       logger.info('MCP SSE client disconnected', {
-        sessionId: req.sessionId,
+        userSessionId: req.sessionId,
         transportId: transport.sessionId,
       });
     });
 
     // Handle connection errors
     res.on('error', (error) => {
-      activeTransports.delete(req.sessionId!);
+      activeTransports.delete(transport.sessionId);
       logger.error('MCP SSE connection error', {
-        sessionId: req.sessionId,
+        userSessionId: req.sessionId,
         transportId: transport.sessionId,
         error: error.message,
       });
@@ -67,7 +67,7 @@ router.get('/sse', async (req: AuthenticatedRequest, res: Response) => {
     await mcpServer.connect(transport);
 
     logger.info('MCP SSE connection established', {
-      sessionId: req.sessionId,
+      userSessionId: req.sessionId,
       transportId: transport.sessionId,
       totalConnections: activeTransports.size,
     });

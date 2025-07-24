@@ -125,22 +125,17 @@ export const activeTransports = new Map<string, SSEServerTransport>();
  * Clean up inactive transports
  */
 export function cleanupTransports(): void {
-  const now = Date.now();
-  const timeout = 5 * 60 * 1000; // 5 minutes
-
-  for (const [sessionId, transport] of activeTransports.entries()) {
-    // Check if transport is still active (this is a simplified check)
-    // In a real implementation, you'd want to track last activity
+  for (const [transportId, transport] of activeTransports.entries()) {
     try {
       // If transport is closed or inactive, remove it
       if (!transport || (transport as any).closed) {
-        activeTransports.delete(sessionId);
-        logger.debug('Cleaned up inactive MCP transport', { sessionId });
+        activeTransports.delete(transportId);
+        logger.debug('Cleaned up inactive MCP transport', { transportId });
       }
     } catch (error) {
       // Transport is likely dead, remove it
-      activeTransports.delete(sessionId);
-      logger.debug('Removed dead MCP transport', { sessionId });
+      activeTransports.delete(transportId);
+      logger.debug('Removed dead MCP transport', { transportId });
     }
   }
 }
