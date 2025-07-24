@@ -1,0 +1,269 @@
+/**
+ * Puppeteer-specific type definitions for the MCP server
+ */
+
+import type { Page, Browser, LaunchOptions } from 'puppeteer';
+
+// Puppeteer Tool Parameters
+export interface NavigateParams {
+  url: string;
+  launchOptions?: LaunchOptions;
+  allowDangerous?: boolean;
+}
+
+export interface ScreenshotParams {
+  name: string;
+  selector?: string;
+  width?: number;
+  height?: number;
+  encoded?: boolean;
+}
+
+export interface ClickParams {
+  selector: string;
+}
+
+export interface FillParams {
+  selector: string;
+  value: string;
+}
+
+export interface SelectParams {
+  selector: string;
+  value: string;
+}
+
+export interface HoverParams {
+  selector: string;
+}
+
+export interface EvaluateParams {
+  script: string;
+}
+
+// Browser Management Types
+export interface BrowserInstance {
+  browser: Browser;
+  createdAt: Date;
+  lastUsed: Date;
+  pageCount: number;
+  isHealthy: boolean;
+}
+
+export interface PageSession {
+  page: Page;
+  sessionId: string;
+  createdAt: Date;
+  lastActivity: Date;
+  url?: string;
+}
+
+export interface BrowserManagerConfig {
+  launchOptions: LaunchOptions;
+  maxPages: number;
+  pageTimeout: number;
+  sessionTimeout: number;
+  restartThreshold: number;
+}
+
+// Screenshot Storage
+export interface ScreenshotMetadata {
+  name: string;
+  sessionId: string;
+  timestamp: Date;
+  width: number;
+  height: number;
+  selector?: string;
+  url?: string;
+  size: number;
+}
+
+export interface StoredScreenshot {
+  metadata: ScreenshotMetadata;
+  data: string | Uint8Array;
+  mimeType: string;
+}
+
+// Browser Launch Configuration
+export interface SafeLaunchOptions extends Omit<LaunchOptions, 'args'> {
+  args?: string[];
+  allowDangerousArgs?: boolean;
+}
+
+// Dangerous arguments that should be filtered
+export const DANGEROUS_ARGS = [
+  '--no-sandbox',
+  '--disable-setuid-sandbox',
+  '--disable-dev-shm-usage',
+  '--disable-web-security',
+  '--disable-features=VizDisplayCompositor',
+  '--allow-running-insecure-content',
+  '--disable-site-isolation-trials',
+  '--allow-running-insecure-content'
+] as const;
+
+// Safe default arguments for containerized environments
+export const SAFE_DEFAULT_ARGS = [
+  '--no-sandbox',
+  '--disable-setuid-sandbox',
+  '--disable-dev-shm-usage',
+  '--disable-gpu',
+  '--disable-web-security',
+  '--disable-features=VizDisplayCompositor',
+  '--single-process',
+  '--disable-background-timer-throttling',
+  '--disable-backgrounding-occluded-windows',
+  '--disable-renderer-backgrounding'
+] as const;
+
+// Browser Health Check
+export interface BrowserHealthStatus {
+  isHealthy: boolean;
+  uptime: number;
+  pageCount: number;
+  memoryUsage?: {
+    used: number;
+    total: number;
+  };
+  lastError?: string;
+  lastErrorTime?: Date;
+}
+
+// Page Navigation Options
+export interface NavigationOptions {
+  waitUntil?: 'load' | 'domcontentloaded' | 'networkidle0' | 'networkidle2';
+  timeout?: number;
+}
+
+// Element Interaction Options
+export interface ElementOptions {
+  timeout?: number;
+  visible?: boolean;
+}
+
+// Screenshot Options
+export interface ScreenshotOptions {
+  type?: 'png' | 'jpeg' | 'webp';
+  quality?: number;
+  fullPage?: boolean;
+  clip?: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  };
+  omitBackground?: boolean;
+  encoding?: 'base64' | 'binary';
+}
+
+// Console Log Entry
+export interface ConsoleLogEntry {
+  type: 'log' | 'debug' | 'info' | 'error' | 'warning' | 'dir' | 'dirxml' | 'table' | 'trace' | 'clear' | 'startGroup' | 'startGroupCollapsed' | 'endGroup' | 'assert' | 'profile' | 'profileEnd' | 'count' | 'timeEnd';
+  text: string;
+  timestamp: Date;
+  location?: {
+    url?: string;
+    lineNumber?: number;
+    columnNumber?: number;
+  };
+}
+
+// Page Performance Metrics
+export interface PageMetrics {
+  timestamp: Date;
+  documents: number;
+  frames: number;
+  jsEventListeners: number;
+  nodes: number;
+  layoutCount: number;
+  recalcStyleCount: number;
+  layoutDuration: number;
+  recalcStyleDuration: number;
+  scriptDuration: number;
+  taskDuration: number;
+  jsHeapUsedSize: number;
+  jsHeapTotalSize: number;
+}
+
+// Error Types
+export class PuppeteerMCPError extends Error {
+  constructor(
+    message: string,
+    public code: string,
+    public details?: any
+  ) {
+    super(message);
+    this.name = 'PuppeteerMCPError';
+  }
+}
+
+export class BrowserError extends PuppeteerMCPError {
+  constructor(message: string, details?: any) {
+    super(message, 'BROWSER_ERROR', details);
+  }
+}
+
+export class NavigationError extends PuppeteerMCPError {
+  constructor(message: string, details?: any) {
+    super(message, 'NAVIGATION_ERROR', details);
+  }
+}
+
+export class ElementError extends PuppeteerMCPError {
+  constructor(message: string, details?: any) {
+    super(message, 'ELEMENT_ERROR', details);
+  }
+}
+
+export class ScreenshotError extends PuppeteerMCPError {
+  constructor(message: string, details?: any) {
+    super(message, 'SCREENSHOT_ERROR', details);
+  }
+}
+
+export class EvaluationError extends PuppeteerMCPError {
+  constructor(message: string, details?: any) {
+    super(message, 'EVALUATION_ERROR', details);
+  }
+}
+
+// Type guards
+export function isValidSelector(selector: string): boolean {
+  try {
+    // Basic CSS selector validation
+    if (!selector || typeof selector !== 'string') return false;
+    // Simple validation - check for basic CSS selector patterns
+    return /^[a-zA-Z0-9\-_#.\[\]:(),\s>+~*="']+$/.test(selector);
+  } catch {
+    return false;
+  }
+}
+
+export function isValidUrl(url: string): boolean {
+  try {
+    const urlObj = new URL(url);
+    return ['http:', 'https:', 'file:'].includes(urlObj.protocol);
+  } catch {
+    return false;
+  }
+}
+
+// Utility types
+export type PuppeteerToolName = 
+  | 'puppeteer_navigate'
+  | 'puppeteer_screenshot'
+  | 'puppeteer_click'
+  | 'puppeteer_fill'
+  | 'puppeteer_select'
+  | 'puppeteer_hover'
+  | 'puppeteer_evaluate';
+
+export interface ToolParams {
+  puppeteer_navigate: NavigateParams;
+  puppeteer_screenshot: ScreenshotParams;
+  puppeteer_click: ClickParams;
+  puppeteer_fill: FillParams;
+  puppeteer_select: SelectParams;
+  puppeteer_hover: HoverParams;
+  puppeteer_evaluate: EvaluateParams;
+}

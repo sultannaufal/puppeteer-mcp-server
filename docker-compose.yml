@@ -1,0 +1,107 @@
+services:
+  puppeteer-mcp-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    container_name: puppeteer-mcp-server
+    restart: unless-stopped
+    ports:
+      - "${PORT:-3000}:3000"
+    environment:
+      # Server Configuration
+      - NODE_ENV=${NODE_ENV:-production}
+      - PORT=3000
+      - HOST=0.0.0.0
+      
+      # Authentication
+      - API_KEY=${API_KEY}
+      
+      # Puppeteer Configuration
+      - PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
+      - PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
+      - PUPPETEER_ARGS=${PUPPETEER_ARGS:---no-sandbox --disable-setuid-sandbox --disable-dev-shm-usage --disable-accelerated-2d-canvas --no-first-run --no-zygote --disable-gpu}
+      
+      # Browser Configuration
+      - BROWSER_TIMEOUT=${BROWSER_TIMEOUT:-30000}
+      - PAGE_TIMEOUT=${PAGE_TIMEOUT:-30000}
+      - NAVIGATION_TIMEOUT=${NAVIGATION_TIMEOUT:-30000}
+      
+      # Logging Configuration
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - LOG_FORMAT=${LOG_FORMAT:-json}
+      
+      # Security Configuration
+      - ALLOWED_DOMAINS=${ALLOWED_DOMAINS:-}
+      - BLOCKED_DOMAINS=${BLOCKED_DOMAINS:-}
+      - MAX_PAGES=${MAX_PAGES:-10}
+      
+      # Performance Configuration
+      - MEMORY_LIMIT=${MEMORY_LIMIT:-512}
+      - CPU_LIMIT=${CPU_LIMIT:-1}
+    
+    volumes:
+      # Logs persistence
+      - ./logs:/app/logs
+      # Screenshots persistence (optional)
+      - ./screenshots:/app/screenshots
+      # Shared memory for Chromium
+      - /dev/shm:/dev/shm
+    
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          memory: ${MEMORY_LIMIT:-512}M
+          cpus: '${CPU_LIMIT:-1}'
+        reservations:
+          memory: 256M
+          cpus: '0.5'
+    
+    # Security options
+    security_opt:
+      - seccomp:unconfined
+    
+    # Health check
+    healthcheck:
+      test: ["CMD", "node", "-e", "const http = require('http'); const options = { hostname: 'localhost', port: 3000, path: '/health', timeout: 5000 }; const req = http.request(options, (res) => { if (res.statusCode === 200) process.exit(0); else process.exit(1); }); req.on('error', () => process.exit(1)); req.on('timeout', () => process.exit(1)); req.end();"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    
+    # Network configuration
+    networks:
+      - puppeteer-network
+
+# Development override
+  puppeteer-mcp-server-dev:
+    extends: puppeteer-mcp-server
+    build:
+      target: base
+    environment:
+      - NODE_ENV=development
+      - LOG_LEVEL=debug
+    volumes:
+      # Mount source code for development
+      - ./src:/app/src
+      - ./package.json:/app/package.json
+      - ./tsconfig.json:/app/tsconfig.json
+      # Node modules cache
+      - node_modules:/app/node_modules
+      # Logs
+      - ./logs:/app/logs
+      # Screenshots
+      - ./screenshots:/app/screenshots
+    command: ["npm", "run", "dev"]
+    profiles:
+      - dev
+
+networks:
+  puppeteer-network:
+    driver: bridge
+    name: puppeteer-mcp-network
+
+volumes:
+  node_modules:
+    name: puppeteer-mcp-node-modules
