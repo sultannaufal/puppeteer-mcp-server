@@ -5,21 +5,31 @@
 [![TypeScript](https://img.shields.io/badge/typescript-5.3.3-blue.svg)](https://www.typescriptlang.org/)
 [![Docker](https://img.shields.io/badge/docker-ready-blue.svg)](https://www.docker.com/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
-[![Build Status](https://img.shields.io/badge/build-passing-brightgreen.svg)](#)
+[![Build Status](https://github.com/sultannaufal/puppeteer-mcp-server/workflows/CI/badge.svg)](https://github.com/sultannaufal/puppeteer-mcp-server/actions)
 [![MCP Protocol](https://img.shields.io/badge/MCP-2.0-orange.svg)](https://modelcontextprotocol.io/)
 
-A **self-hosted Puppeteer MCP (Model Context Protocol) server** with remote SSE access, API key authentication, and Docker deployment. This server provides all 7 Puppeteer tools from the archived MCP server with enhanced security, monitoring, and production-ready features.
+A **self-hosted Puppeteer MCP (Model Context Protocol) server** with remote SSE access, API key authentication, and Docker deployment. This server provides **13 comprehensive Puppeteer tools** including advanced mouse interactions, with enhanced security, monitoring, and production-ready features.
 
 ## 🌟 Features
 
 ### 🔧 **Complete Puppeteer Tool Suite**
+
+#### **Core Browser Tools**
 - **`puppeteer_navigate`** - Navigate to URLs with safety validation
-- **`puppeteer_screenshot`** - Take full page or element screenshots  
+- **`puppeteer_screenshot`** - Take full page or element screenshots
 - **`puppeteer_click`** - Click elements with retry logic
 - **`puppeteer_fill`** - Fill input fields with validation
 - **`puppeteer_select`** - Select options from dropdown elements
 - **`puppeteer_hover`** - Hover over elements with effect detection
 - **`puppeteer_evaluate`** - Execute JavaScript with console capture
+
+#### **🖱️ Advanced Mouse Tools**
+- **`puppeteer_mouse_move`** - Precise coordinate movement with smooth interpolation
+- **`puppeteer_mouse_click`** - Advanced clicking with button options (left/right/middle/back/forward)
+- **`puppeteer_mouse_down`** - Mouse button press for drag operations
+- **`puppeteer_mouse_up`** - Mouse button release for drag operations
+- **`puppeteer_mouse_wheel`** - Mouse wheel scrolling with deltaX/deltaY control
+- **`puppeteer_mouse_drag`** - Complete drag and drop functionality
 
 ### 🚀 **Production Ready**
 - **Docker Containerization** - Multi-stage builds with optimization
@@ -298,6 +308,113 @@ Authorization: Bearer your-api-key
 }
 ```
 
+### 🖱️ Advanced Mouse Tool Examples
+
+#### Move Mouse to Coordinates
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 4,
+  "method": "tools/call",
+  "params": {
+    "name": "puppeteer_mouse_move",
+    "arguments": {
+      "x": 300,
+      "y": 200,
+      "steps": 10
+    }
+  }
+}
+```
+
+#### Click at Precise Coordinates
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 5,
+  "method": "tools/call",
+  "params": {
+    "name": "puppeteer_mouse_click",
+    "arguments": {
+      "x": 400,
+      "y": 300,
+      "button": "right",
+      "clickCount": 2
+    }
+  }
+}
+```
+
+#### Drag and Drop Operation
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 6,
+  "method": "tools/call",
+  "params": {
+    "name": "puppeteer_mouse_drag",
+    "arguments": {
+      "startX": 100,
+      "startY": 100,
+      "endX": 300,
+      "endY": 200,
+      "steps": 15,
+      "delay": 50
+    }
+  }
+}
+```
+
+#### Mouse Wheel Scrolling
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 7,
+  "method": "tools/call",
+  "params": {
+    "name": "puppeteer_mouse_wheel",
+    "arguments": {
+      "x": 400,
+      "y": 300,
+      "deltaY": -120
+    }
+  }
+}
+```
+
+#### Mouse Button Press and Release
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 8,
+  "method": "tools/call",
+  "params": {
+    "name": "puppeteer_mouse_down",
+    "arguments": {
+      "x": 200,
+      "y": 150,
+      "button": "left"
+    }
+  }
+}
+```
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 9,
+  "method": "tools/call",
+  "params": {
+    "name": "puppeteer_mouse_up",
+    "arguments": {
+      "x": 250,
+      "y": 200,
+      "button": "left"
+    }
+  }
+}
+```
+
 ## 🐳 Deployment Options
 
 ### Coolify Deployment (Easiest)
@@ -447,27 +564,35 @@ puppeteer-mcp-server/
 │   │   ├── base.ts         # Base tool class and registry
 │   │   ├── navigate.ts     # Navigation tool
 │   │   ├── screenshot.ts   # Screenshot tool
-│   │   ├── click.ts        # Click tool
+│   │   ├── click.ts        # Element click tool
 │   │   ├── fill.ts         # Form filling tool
 │   │   ├── select.ts       # Dropdown selection tool
-│   │   ├── hover.ts        # Hover tool
+│   │   ├── hover.ts        # Element hover tool
 │   │   ├── evaluate.ts     # JavaScript execution tool
+│   │   ├── mouse-move.ts   # 🖱️ Precise mouse movement
+│   │   ├── mouse-click.ts  # 🖱️ Coordinate-based clicking
+│   │   ├── mouse-down.ts   # 🖱️ Mouse button press
+│   │   ├── mouse-up.ts     # 🖱️ Mouse button release
+│   │   ├── mouse-wheel.ts  # 🖱️ Mouse wheel scrolling
+│   │   ├── mouse-drag.ts   # 🖱️ Drag and drop operations
 │   │   └── index.ts        # Tool exports
 │   ├── services/           # Core services
 │   │   ├── browser.ts      # Browser lifecycle management
-│   │   └── sse.ts          # Server-Sent Events service
+│   │   └── mcp-server.ts   # MCP server implementation
 │   ├── routes/             # HTTP route handlers
 │   │   ├── health.ts       # Health check endpoints
-│   │   ├── mcp.ts          # MCP protocol endpoints
-│   │   └── sse.ts          # SSE endpoints
+│   │   └── mcp.ts          # MCP protocol endpoints
 │   ├── middleware/         # Express middleware
 │   │   └── auth.ts         # Authentication middleware
 │   ├── utils/              # Utility functions
 │   │   ├── config.ts       # Configuration management
 │   │   ├── logger.ts       # Logging utilities
-│   │   └── errors.ts       # Error handling
+│   │   ├── errors.ts       # Error handling
+│   │   └── validation.ts   # Parameter validation
 │   ├── types/              # TypeScript type definitions
-│   │   └── mcp.ts          # MCP protocol types
+│   │   ├── mcp.ts          # MCP protocol types
+│   │   ├── puppeteer.ts    # Puppeteer tool types
+│   │   └── server.ts       # Server types
 │   ├── app.ts              # Express application setup
 │   └── server.ts           # Server entry point
 ├── dist/                   # Compiled JavaScript output
@@ -684,34 +809,6 @@ For security vulnerabilities:
 2. **Report** security concerns via GitHub Issues with the "security" label
 3. **Include** detailed information about the vulnerability
 4. **Allow time** for the issue to be addressed before disclosure
-
-## 📄 License
-
-This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) file for details.
-
-```
-MIT License
-
-Copyright (c) 2024 Puppeteer MCP Server Contributors
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-```
 
 ## 🙏 Acknowledgments
 
