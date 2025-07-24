@@ -1,5 +1,5 @@
 /**
- * MCP protocol endpoint for handling JSON-RPC requests
+ * MCP protocol endpoint for handling JSON-RPC requests and SSE connections
  */
 
 import { Router, Request, Response } from 'express';
@@ -19,7 +19,7 @@ import {
   ErrorCodes,
   ToolContext
 } from '@/types/mcp';
-import { sendMCPMessageToSession } from '@/services/sse';
+import { sendMCPMessageToSession, createSSEConnection, sseManager, setupHeartbeat } from '@/services/sse';
 import { logger, mcpLogger } from '@/utils/logger';
 import { ErrorHandler, ValidationError, MethodNotFoundError } from '@/utils/errors';
 import { validate } from '@/utils/validation';
@@ -48,8 +48,90 @@ const SERVER_CAPABILITIES: ServerCapabilities = {
 const availableTools = getToolDefinitions();
 
 /**
- * MCP protocol endpoint
- * POST /mcp
+ * MCP protocol endpoint for SSE connections
+ * GET /mcp - Establishes SSE connection for server-to-client communication
+ */
+router.get('/', (req: AuthenticatedRequest, res: Response) => {
+  try {
+    // Ensure we have a session ID from authentication
+    if (!req.sessionId) {
+      const { error, statusCode } = ErrorHandler.handleError(
+        new Error('Session ID not found - authentication required')
+      );
+      return res.status(statusCode).json({
+        jsonrpc: '2.0',
+        id: null,
+        error,
+      });
+    }
+
+    logger.info('MCP SSE connection request', {
+      sessionId: req.sessionId,
+      ip: req.ip,
+      userAgent: req.get('User-Agent'),
+    });
+
+    // Create SSE connection
+    const connection = createSSEConnection(res, req.sessionId);
+    
+    // Add connection to manager
+    sseManager.addConnection(connection);
+
+    // Setup heartbeat
+    const heartbeatInterval = setupHeartbeat(connection.id);
+
+    // Handle client disconnect
+    req.on('close', () => {
+      clearInterval(heartbeatInterval);
+      sseManager.removeConnection(connection.id);
+      logger.info('MCP SSE client disconnected', {
+        connectionId: connection.id,
+        sessionId: req.sessionId,
+      });
+    });
+
+    // Handle connection errors
+    req.on('error', (error) => {
+      clearInterval(heartbeatInterval);
+      sseManager.removeConnection(connection.id);
+      logger.error('MCP SSE connection error', {
+        connectionId: connection.id,
+        sessionId: req.sessionId,
+        error: error.message,
+      });
+    });
+
+    logger.info('MCP SSE connection established', {
+      connectionId: connection.id,
+      sessionId: req.sessionId,
+      totalConnections: sseManager.connections.size,
+    });
+
+    // Connection established successfully
+    return;
+
+  } catch (error) {
+    logger.error('MCP SSE endpoint error', {
+      error: error instanceof Error ? error.message : String(error),
+      sessionId: req.sessionId,
+      ip: req.ip,
+    });
+
+    const { error: jsonRpcError, statusCode } = ErrorHandler.handleError(error);
+    
+    if (!res.headersSent) {
+      res.status(statusCode).json({
+        jsonrpc: '2.0',
+        id: null,
+        error: jsonRpcError,
+      });
+    }
+  }
+});
+
+/**
+ * MCP protocol endpoint for JSON-RPC requests
+ * POST /mcp - Handles client-to-server communication
  */
 router.post('/', async (req: AuthenticatedRequest, res: Response) => {
   const startTime = Date.now();
