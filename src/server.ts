@@ -5,8 +5,8 @@
 import { createApp } from './app';
 import { getConfig, validateConfig } from '@/utils/config';
 import { logger, startupLogger } from '@/utils/logger';
-import { sseManager } from '@/services/sse';
 import { browserManager } from '@/services/browser';
+import { cleanupTransports } from '@/services/mcp-server';
 import '@/tools'; // Import tools to register them
 
 // Load and validate configuration
@@ -52,9 +52,9 @@ async function startServer(): Promise<void> {
         }
 
         try {
-          // Cleanup SSE connections
-          logger.info('Cleaning up SSE connections...');
-          sseManager.destroy();
+          // Cleanup MCP transports
+          logger.info('Cleaning up MCP transports...');
+          cleanupTransports();
 
           // Cleanup browser manager
           logger.info('Cleaning up browser manager...');

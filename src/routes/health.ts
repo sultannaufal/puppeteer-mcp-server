@@ -6,8 +6,8 @@ import { Router, Request, Response } from 'express';
 import { HealthCheckResponse } from '@/types/server';
 import { getConfig } from '@/utils/config';
 import { logger, healthLogger } from '@/utils/logger';
-import { sseManager } from '@/services/sse';
 import { browserManager } from '@/services/browser';
+import { activeTransports } from '@/services/mcp-server';
 
 const router = Router();
 const config = getConfig();
@@ -22,8 +22,12 @@ router.get('/', async (req: Request, res: Response) => {
     const uptime = process.uptime();
     const memoryUsage = process.memoryUsage();
     
-    // Get SSE connection stats
-    const sseStats = sseManager.getStats();
+    // Get MCP connection stats
+    const mcpStats = {
+      totalConnections: activeTransports.size,
+      activeConnections: activeTransports.size,
+      sessionCount: activeTransports.size,
+    };
     
     // Basic health check response
     const healthResponse: HealthCheckResponse = {
@@ -38,12 +42,12 @@ router.get('/', async (req: Request, res: Response) => {
       },
     };
 
-    // Add SSE connection info
-    if (sseStats.totalConnections > 0) {
+    // Add MCP connection info
+    if (mcpStats.totalConnections > 0) {
       healthResponse.connections = {
-        total: sseStats.totalConnections,
-        active: sseStats.activeConnections,
-        sessions: sseStats.sessionCount,
+        total: mcpStats.totalConnections,
+        active: mcpStats.activeConnections,
+        sessions: mcpStats.sessionCount,
       };
     }
 
@@ -69,7 +73,7 @@ router.get('/', async (req: Request, res: Response) => {
       uptime,
       memoryUsage: healthResponse.memory,
       responseTime,
-      connections: sseStats,
+      connections: mcpStats,
     });
 
     // Add response time header
@@ -108,8 +112,12 @@ router.get('/detailed', async (req: Request, res: Response) => {
     const memoryUsage = process.memoryUsage();
     const cpuUsage = process.cpuUsage();
     
-    // Get SSE connection stats
-    const sseStats = sseManager.getStats();
+    // Get MCP connection stats
+    const mcpStats = {
+      totalConnections: activeTransports.size,
+      activeConnections: activeTransports.size,
+      sessionCount: activeTransports.size,
+    };
     
     // Detailed health response
     const detailedResponse: any = {
@@ -141,11 +149,11 @@ router.get('/detailed', async (req: Request, res: Response) => {
         system: cpuUsage.system,
       },
       
-      // SSE connections
+      // MCP connections
       connections: {
-        total: sseStats.totalConnections,
-        active: sseStats.activeConnections,
-        sessions: sseStats.sessionCount,
+        total: mcpStats.totalConnections,
+        active: mcpStats.activeConnections,
+        sessions: mcpStats.sessionCount,
       },
       
       // Configuration
@@ -204,7 +212,7 @@ router.get('/ready', async (req: Request, res: Response) => {
     // Check if all required services are ready
     const checks = {
       server: true, // Server is running if we reach this point
-      sse: sseManager !== null,
+      mcp: activeTransports !== null,
       browser: (await browserManager.getHealthStatus()).isHealthy,
     };
 

@@ -1,57 +1,24 @@
 /**
- * MCP protocol endpoint for handling JSON-RPC requests and SSE connections
+ * MCP routes using the official MCP SDK with SSE transport
  */
 
 import { Router, Request, Response } from 'express';
+import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js';
 import { AuthenticatedRequest } from '@/types/server';
-import {
-  JSONRPCRequest,
-  JSONRPCResponse,
-  InitializeRequest,
-  InitializeResult,
-  ListToolsRequest,
-  ListToolsResult,
-  CallToolRequest,
-  CallToolResult,
-  PingRequest,
-  PingResult,
-  ServerCapabilities,
-  ErrorCodes,
-  ToolContext
-} from '@/types/mcp';
-import { sendMCPMessageToSession, createSSEConnection, sseManager, setupHeartbeat } from '@/services/sse';
-import { logger, mcpLogger } from '@/utils/logger';
-import { ErrorHandler, ValidationError, MethodNotFoundError } from '@/utils/errors';
-import { validate } from '@/utils/validation';
-import { getConfig } from '@/utils/config';
-import { toolRegistry, getToolDefinitions } from '@/tools';
-import { browserManager } from '@/services/browser';
+import { createMCPServer, activeTransports } from '@/services/mcp-server';
+import { logger } from '@/utils/logger';
+import { ErrorHandler } from '@/utils/errors';
 
 const router = Router();
-const config = getConfig();
 
-// Server information
-const SERVER_INFO = {
-  name: 'puppeteer-mcp-server',
-  version: '1.0.0',
-};
-
-// Server capabilities
-const SERVER_CAPABILITIES: ServerCapabilities = {
-  tools: {
-    listChanged: false,
-  },
-  logging: {},
-};
-
-// Available tools from tool registry
-const availableTools = getToolDefinitions();
+// Create the MCP server instance
+const mcpServer = createMCPServer();
 
 /**
- * MCP protocol endpoint for SSE connections
- * GET /mcp - Establishes SSE connection for server-to-client communication
+ * SSE endpoint for MCP communication
+ * GET /sse - Establishes SSE connection using MCP SDK
  */
-router.get('/', (req: AuthenticatedRequest, res: Response) => {
+router.get('/sse', async (req: AuthenticatedRequest, res: Response) => {
   try {
     // Ensure we have a session ID from authentication
     if (!req.sessionId) {
@@ -71,44 +38,42 @@ router.get('/', (req: AuthenticatedRequest, res: Response) => {
       userAgent: req.get('User-Agent'),
     });
 
-    // Create SSE connection
-    const connection = createSSEConnection(res, req.sessionId);
+    // Create SSE transport using MCP SDK
+    const transport = new SSEServerTransport('/messages', res);
     
-    // Add connection to manager
-    sseManager.addConnection(connection);
-
-    // Setup heartbeat
-    const heartbeatInterval = setupHeartbeat(connection.id);
+    // Store transport for session management
+    activeTransports.set(req.sessionId, transport);
 
     // Handle client disconnect
-    req.on('close', () => {
-      clearInterval(heartbeatInterval);
-      sseManager.removeConnection(connection.id);
+    res.on('close', () => {
+      activeTransports.delete(req.sessionId!);
       logger.info('MCP SSE client disconnected', {
-        connectionId: connection.id,
         sessionId: req.sessionId,
+        transportId: transport.sessionId,
       });
     });
 
     // Handle connection errors
-    req.on('error', (error) => {
-      clearInterval(heartbeatInterval);
-      sseManager.removeConnection(connection.id);
+    res.on('error', (error) => {
+      activeTransports.delete(req.sessionId!);
       logger.error('MCP SSE connection error', {
-        connectionId: connection.id,
         sessionId: req.sessionId,
+        transportId: transport.sessionId,
         error: error.message,
       });
     });
 
+    // Connect the MCP server to the transport
+    await mcpServer.connect(transport);
+
     logger.info('MCP SSE connection established', {
-      connectionId: connection.id,
       sessionId: req.sessionId,
-      totalConnections: sseManager.connections.size,
+      transportId: transport.sessionId,
+      totalConnections: activeTransports.size,
     });
 
-    // Connection established successfully
-    return;
+    // Connection is now managed by the MCP SDK
+    // The response will be kept alive by the SSEServerTransport
 
   } catch (error) {
     logger.error('MCP SSE endpoint error', {
@@ -117,9 +82,8 @@ router.get('/', (req: AuthenticatedRequest, res: Response) => {
       ip: req.ip,
     });
 
-    const { error: jsonRpcError, statusCode } = ErrorHandler.handleError(error);
-    
     if (!res.headersSent) {
+      const { error: jsonRpcError, statusCode } = ErrorHandler.handleError(error);
       res.status(statusCode).json({
         jsonrpc: '2.0',
         id: null,
@@ -130,164 +94,108 @@ router.get('/', (req: AuthenticatedRequest, res: Response) => {
 });
 
 /**
- * MCP protocol endpoint for JSON-RPC requests
- * POST /mcp - Handles client-to-server communication
+ * Messages endpoint for MCP communication
+ * POST /messages - Handles MCP messages using MCP SDK
  */
-router.post('/', async (req: AuthenticatedRequest, res: Response) => {
-  const startTime = Date.now();
-  let requestId: string | number | null = null;
-
+router.post('/messages', async (req: Request, res: Response) => {
   try {
-    // Validate request format
-    const request = validate.mcpRequest(req.body) as JSONRPCRequest;
-    requestId = request.id || null;
-
-    mcpLogger.request(request.method, request.params, requestId);
-
-    // Handle different MCP methods
-    let result: any;
+    const sessionId = req.query.sessionId as string;
     
-    switch (request.method) {
-      case 'initialize':
-        result = await handleInitialize(request.params);
-        break;
-        
-      case 'tools/list':
-        result = await handleToolsList(request.params);
-        break;
-        
-      case 'tools/call':
-        result = await handleToolsCall(request.params, req.sessionId!, requestId);
-        break;
-        
-      case 'ping':
-        result = await handlePing(request.params);
-        break;
-        
-      default:
-        throw new MethodNotFoundError(request.method);
-    }
-
-    // Create response
-    const response: JSONRPCResponse = {
-      jsonrpc: '2.0',
-      id: requestId,
-      result,
-    };
-
-    const duration = Date.now() - startTime;
-    mcpLogger.response(result, requestId, duration);
-
-    // Send response via SSE if session exists
-    if (req.sessionId) {
-      const sentCount = sendMCPMessageToSession(req.sessionId, response);
-      logger.debug('MCP response sent via SSE', {
-        sessionId: req.sessionId,
-        requestId,
-        method: request.method,
-        sentToConnections: sentCount,
+    if (!sessionId) {
+      return res.status(400).json({
+        jsonrpc: '2.0',
+        id: null,
+        error: {
+          code: -32602,
+          message: 'Missing sessionId parameter',
+        },
       });
     }
 
-    // Also send HTTP response
-    res.json(response);
-
-  } catch (error) {
-    const duration = Date.now() - startTime;
-    mcpLogger.error(error, requestId);
-
-    const { error: jsonRpcError, statusCode } = ErrorHandler.handleError(error, requestId);
-    
-    const errorResponse: JSONRPCResponse = {
-      jsonrpc: '2.0',
-      id: requestId,
-      error: jsonRpcError,
-    };
-
-    // Send error via SSE if session exists
-    if (req.sessionId) {
-      sendMCPMessageToSession(req.sessionId, errorResponse);
-    }
-
-    logger.error('MCP request failed', {
-      sessionId: req.sessionId,
-      requestId,
+    logger.debug('MCP message request', {
+      sessionId,
       method: req.body?.method,
-      error: error instanceof Error ? error.message : String(error),
-      duration,
+      id: req.body?.id,
     });
 
-    res.status(statusCode).json(errorResponse);
+    // Get the transport for this session
+    const transport = activeTransports.get(sessionId);
+    if (!transport) {
+      return res.status(400).json({
+        jsonrpc: '2.0',
+        id: req.body?.id || null,
+        error: {
+          code: -32001,
+          message: 'No active transport found for sessionId',
+          data: { sessionId },
+        },
+      });
+    }
+
+    // Handle the message using the MCP SDK transport
+    await transport.handlePostMessage(req, res, req.body);
+
+    logger.debug('MCP message handled', {
+      sessionId,
+      method: req.body?.method,
+      id: req.body?.id,
+    });
+
+  } catch (error) {
+    logger.error('MCP message endpoint error', {
+      error: error instanceof Error ? error.message : String(error),
+      sessionId: req.query.sessionId,
+      method: req.body?.method,
+    });
+
+    if (!res.headersSent) {
+      const { error: jsonRpcError, statusCode } = ErrorHandler.handleError(error);
+      res.status(statusCode).json({
+        jsonrpc: '2.0',
+        id: req.body?.id || null,
+        error: jsonRpcError,
+      });
+    }
   }
 });
 
 /**
- * Handle initialize request
+ * Get MCP server statistics
+ * GET /stats - Returns information about active connections and server status
  */
-async function handleInitialize(params: any): Promise<InitializeResult> {
-  const validatedParams = validate.initializeParams(params);
-  
-  logger.info('MCP client initialized', {
-    protocolVersion: validatedParams.protocolVersion,
-    clientName: validatedParams.clientInfo.name,
-    clientVersion: validatedParams.clientInfo.version,
-  });
+router.get('/stats', (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const stats = {
+      serverInfo: {
+        name: 'puppeteer-mcp-server',
+        version: '1.0.0',
+      },
+      connections: {
+        active: activeTransports.size,
+        sessions: Array.from(activeTransports.keys()),
+      },
+      timestamp: new Date().toISOString(),
+    };
 
-  return {
-    protocolVersion: '2024-11-05',
-    capabilities: SERVER_CAPABILITIES,
-    serverInfo: SERVER_INFO,
-  };
-}
+    logger.debug('MCP stats requested', {
+      sessionId: req.sessionId,
+      activeConnections: stats.connections.active,
+    });
 
-/**
- * Handle tools/list request
- */
-async function handleToolsList(params: any): Promise<ListToolsResult> {
-  return {
-    tools: availableTools,
-  };
-}
+    res.json(stats);
+  } catch (error) {
+    logger.error('MCP stats endpoint error', {
+      error: error instanceof Error ? error.message : String(error),
+      sessionId: req.sessionId,
+    });
 
-/**
- * Handle tools/call request
- */
-async function handleToolsCall(params: any, sessionId: string, requestId: string | number | null): Promise<CallToolResult> {
-  const validatedParams = validate.toolsCallParams(params);
-  
-  // Create tool context
-  const toolContext: ToolContext = {
-    sessionId,
-    requestId,
-    browserManager,
-    logger,
-  };
-  
-  // Execute the tool
-  return await toolRegistry.execute(validatedParams.name, validatedParams.arguments, toolContext);
-}
-
-/**
- * Handle ping request
- */
-async function handlePing(params: any): Promise<PingResult> {
-  return {}; // Empty object response as per MCP spec
-}
-
-// Remove the setAvailableTools function as we now use the tool registry directly
-
-/**
- * Get server capabilities
- */
-export function getServerCapabilities(): ServerCapabilities {
-  return SERVER_CAPABILITIES;
-}
-
-/**
- * Get server info
- */
-export function getServerInfo(): typeof SERVER_INFO {
-  return SERVER_INFO;
-}
+    const { error: jsonRpcError, statusCode } = ErrorHandler.handleError(error);
+    res.status(statusCode).json({
+      jsonrpc: '2.0',
+      id: null,
+      error: jsonRpcError,
+    });
+  }
+});
 
 export default router;

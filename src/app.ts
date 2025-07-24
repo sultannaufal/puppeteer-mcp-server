@@ -20,7 +20,6 @@ import {
 
 // Import routes
 import healthRoutes from '@/routes/health';
-import sseRoutes from '@/routes/sse';
 import mcpRoutes from '@/routes/mcp';
 
 const config = getConfig();
@@ -123,11 +122,8 @@ export function createApp(): express.Application {
   // Health check routes (no authentication required)
   app.use('/health', optionalAuth, healthRoutes);
 
-  // SSE endpoint (requires authentication)
-  app.use('/sse', authenticateApiKey, sseRoutes);
-
-  // MCP protocol endpoint (requires authentication)
-  app.use('/mcp', authenticateApiKey, mcpRoutes);
+  // MCP endpoints (requires authentication)
+  app.use('/', authenticateApiKey, mcpRoutes);
 
   // Root endpoint
   app.get('/', (req, res) => {
@@ -138,7 +134,8 @@ export function createApp(): express.Application {
       endpoints: {
         health: '/health',
         sse: '/sse',
-        mcp: '/mcp',
+        messages: '/messages',
+        stats: '/stats',
       },
       documentation: 'https://github.com/yourusername/puppeteer-mcp-server',
     });
