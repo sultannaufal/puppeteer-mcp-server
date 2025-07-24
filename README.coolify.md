@@ -21,21 +21,21 @@ Deploy your Puppeteer MCP Server to Coolify in minutes with automatic HTTPS, mon
 
 ## ✨ What Coolify Provides
 
-- **🔐 Automatic API Key**: Secure key generated as `SERVICE_PASSWORD_PUPPETEER_MCP_SERVER`
 - **🌐 Custom Domain**: Your app gets a domain like `https://your-app.coolify.domain.com`
 - **🔒 SSL Certificate**: HTTPS enabled automatically
 - **📊 Health Monitoring**: Built-in monitoring with `/health` endpoint
 - **🔄 Auto Restart**: Automatic recovery from failures
 - **📝 Persistent Storage**: Logs and screenshots saved automatically
+- **⚙️ Environment Variables**: Easy configuration through Coolify UI
 
 ## 🧪 Test Your Deployment
 
 After deployment, test your server:
 
 ```bash
-# Replace with your actual Coolify URL and generated API key
+# Replace with your actual Coolify URL and the API key you set
 export COOLIFY_URL="https://your-app.coolify.domain.com"
-export API_KEY="your-generated-api-key"
+export API_KEY="your-api-key-from-coolify-ui"
 
 # Health check
 curl $COOLIFY_URL/health
@@ -61,32 +61,40 @@ curl -H "Authorization: Bearer $API_KEY" \
      }'
 ```
 
-## ⚙️ Optional Configuration
+## ⚙️ Environment Variables
 
-You can customize these environment variables in Coolify's dashboard:
+Set these in Coolify's Environment Variables section:
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `MEMORY_LIMIT` | `512` | Memory limit in MB |
-| `CPU_LIMIT` | `1` | CPU limit (cores) |
-| `MAX_PAGES` | `10` | Max concurrent pages |
-| `LOG_LEVEL` | `info` | Logging level |
-| `BROWSER_TIMEOUT` | `30000` | Browser timeout (ms) |
-| `RATE_LIMIT_MAX` | `100` | Max requests per window |
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `API_KEY` | ✅ | - | Your secure API key for authentication |
+| `LOG_LEVEL` | ❌ | `info` | Logging level (debug, info, warn, error) |
+| `MAX_PAGES` | ❌ | `10` | Max concurrent browser pages |
+| `BROWSER_TIMEOUT` | ❌ | `30000` | Browser operation timeout (ms) |
+| `RATE_LIMIT_MAX` | ❌ | `100` | Max requests per time window |
 
 ## 🔧 Troubleshooting
 
 **Build Failed?**
 - Check that `docker-compose.coolify.yml` exists in your repository root
 - Verify your repository is accessible
+- Ensure Docker build context is correct
 
 **App Not Starting?**
 - Check application logs in Coolify dashboard
 - Verify environment variables are set correctly
+- Check if browser dependencies are properly installed
 
 **Can't Access App?**
-- Ensure domain is properly configured
-- Check SSL certificate status in Coolify
+- Ensure domain is properly configured in Coolify
+- Check SSL certificate status in Coolify dashboard
+- Verify Traefik labels are correctly applied
+- Check if the application is listening on the correct port (3000)
+
+**Labels and Routing Issues?**
+- Coolify automatically adds required labels (`coolify.managed=true`, `coolify.applicationId`, `coolify.type=application`)
+- Traefik labels are handled automatically for routing and HTTPS
+- Custom domain configuration is managed through Coolify UI
 
 ## 📚 Full Documentation
 
