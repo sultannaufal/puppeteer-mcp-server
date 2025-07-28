@@ -106,6 +106,9 @@ export function loadConfig(): ServerConfig {
       maxWidth: parseIntEnv(process.env.SCREENSHOT_MAX_WIDTH, 1920),
       maxHeight: parseIntEnv(process.env.SCREENSHOT_MAX_HEIGHT, 1080),
       quality: parseIntEnv(process.env.SCREENSHOT_QUALITY, 80),
+      enableBinaryServing: parseBooleanEnv(process.env.SCREENSHOT_ENABLE_BINARY_SERVING, false),
+      binaryUrlTtl: parseIntEnv(process.env.SCREENSHOT_BINARY_URL_TTL, 3600), // 1 hour default
+      cleanupInterval: parseIntEnv(process.env.SCREENSHOT_CLEANUP_INTERVAL, 300000), // 5 minutes
     },
     
     performance: {

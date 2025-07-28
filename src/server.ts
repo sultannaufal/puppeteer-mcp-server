@@ -7,10 +7,16 @@ import { getConfig, validateConfig } from '@/utils/config';
 import { logger, startupLogger } from '@/utils/logger';
 import { browserManager } from '@/services/browser';
 import { cleanupTransports } from '@/services/mcp-server';
+import { transportManager } from '@/services/transport-manager';
+import { transportFactory } from '@/services/transport-factory';
+import { imageStorage } from '@/services/image-storage';
 import '@/tools'; // Import tools to register them
 
 // Load and validate configuration
 const config = getConfig();
+
+// Global references for cleanup
+let httpServer: any = null;
 
 /**
  * Start the server
@@ -25,11 +31,11 @@ async function startServer(): Promise<void> {
     await browserManager.initialize();
     startupLogger.browser(config.puppeteer.executablePath);
 
-    // Create Express application
+    // Create Express application and start HTTP server
     const app = createApp();
 
     // Start HTTP server
-    const server = app.listen(config.port, config.host, () => {
+    httpServer = app.listen(config.port, config.host, () => {
       startupLogger.server(config.port, config.host);
       
       logger.info('Server startup complete', {
@@ -44,37 +50,60 @@ async function startServer(): Promise<void> {
     const gracefulShutdown = async (signal: string) => {
       logger.info(`Received ${signal}, starting graceful shutdown...`);
 
-      // Stop accepting new connections
-      server.close(async (err) => {
-        if (err) {
-          logger.error('Error during server shutdown', { error: err.message });
-          process.exit(1);
-        }
-
-        try {
-          // Cleanup MCP transports
-          logger.info('Cleaning up MCP transports...');
-          cleanupTransports();
-
-          // Cleanup browser manager
-          logger.info('Cleaning up browser manager...');
-          await browserManager.destroy();
-
-          logger.info('Graceful shutdown completed');
-          process.exit(0);
-        } catch (cleanupError) {
-          logger.error('Error during cleanup', {
-            error: cleanupError instanceof Error ? cleanupError.message : String(cleanupError),
-          });
-          process.exit(1);
-        }
-      });
-
       // Force shutdown after 30 seconds
-      setTimeout(() => {
+      const forceShutdownTimer = setTimeout(() => {
         logger.error('Forced shutdown after timeout');
         process.exit(1);
       }, 30000);
+
+      try {
+        // Stop HTTP server if running
+        if (httpServer) {
+          await new Promise<void>((resolve, reject) => {
+            httpServer.close((err: any) => {
+              if (err) {
+                logger.error('Error during HTTP server shutdown', { error: err.message });
+                reject(err);
+              } else {
+                resolve();
+              }
+            });
+          });
+        }
+
+        // Cleanup new transport system
+        logger.info('Cleaning up transport manager...');
+        await transportManager.closeAllTransports();
+        
+        logger.info('Cleaning up transport factory...');
+        await transportFactory.cleanup();
+
+        // Cleanup legacy MCP transports
+        logger.info('Cleaning up legacy MCP transports...');
+        cleanupTransports();
+
+        // Cleanup browser manager
+        logger.info('Cleaning up browser manager...');
+        await browserManager.destroy();
+
+        // Cleanup image storage service
+        if (config.screenshot.enableBinaryServing) {
+          logger.info('Cleaning up image storage...');
+          await imageStorage.shutdown();
+        }
+
+        // Clear the force shutdown timer
+        clearTimeout(forceShutdownTimer);
+
+        logger.info('Graceful shutdown completed');
+        process.exit(0);
+      } catch (cleanupError) {
+        logger.error('Error during cleanup', {
+          error: cleanupError instanceof Error ? cleanupError.message : String(cleanupError),
+        });
+        clearTimeout(forceShutdownTimer);
+        process.exit(1);
+      }
     };
 
     // Handle shutdown signals

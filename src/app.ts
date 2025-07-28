@@ -21,6 +21,8 @@ import {
 // Import routes
 import healthRoutes from '@/routes/health';
 import mcpRoutes from '@/routes/mcp';
+import transportRoutes from '@/routes/transports';
+import imageRoutes from '@/routes/images';
 
 const config = getConfig();
 
@@ -125,17 +127,45 @@ export function createApp(): express.Application {
   // MCP endpoints (requires authentication)
   app.use('/', authenticateApiKey, mcpRoutes);
 
+  // New transport endpoints (requires authentication)
+  app.use('/', authenticateApiKey, transportRoutes);
+
+  // Image serving endpoints (no authentication required for serving)
+  app.use('/images', imageRoutes);
+
   // Root endpoint
   app.get('/', (req, res) => {
     res.json({
       name: 'Puppeteer MCP Server',
       version: '1.0.0',
-      description: 'A self-hosted Puppeteer MCP server with remote SSE access',
+      description: 'A self-hosted Puppeteer MCP server with multiple transport support',
       endpoints: {
         health: '/health',
+        // Legacy SSE transport
         sse: '/sse',
         messages: '/messages',
         stats: '/stats',
+        // New transport endpoints
+        streamableHttp: '/http',
+        transportStats: '/stats',
+        transportHealth: '/health',
+        // Binary image serving
+        images: '/images/:id',
+        imageInfo: '/images/:id/info',
+        imageStats: '/images/stats',
+      },
+      transports: {
+        sse: {
+          description: 'Legacy SSE transport (backward compatibility)',
+          endpoints: ['/sse', '/messages'],
+          methods: ['GET', 'POST'],
+        },
+        streamableHttp: {
+          description: 'Modern Streamable HTTP transport (MCP 2025-06-18)',
+          endpoints: ['/http'],
+          methods: ['GET', 'POST', 'DELETE'],
+          features: ['session-management', 'resumability', 'streaming'],
+        },
       },
       documentation: 'https://github.com/yourusername/puppeteer-mcp-server',
     });

@@ -1,7 +1,7 @@
 {
   "name": "puppeteer-mcp-server",
-  "version": "1.0.0",
-  "description": "A self-hosted Puppeteer MCP server with remote SSE access and API key authentication",
+  "version": "1.1.0",
+  "description": "A self-hosted Puppeteer MCP server with multiple transport support (Streamable HTTP, SSE) and API key authentication",
   "main": "dist/server.js",
   "scripts": {
     "build": "tsc && tsc-alias",

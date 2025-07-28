@@ -17,6 +17,7 @@ export interface ScreenshotParams {
   width?: number;
   height?: number;
   encoded?: boolean;
+  useBinaryUrl?: boolean;
 }
 
 export interface ClickParams {

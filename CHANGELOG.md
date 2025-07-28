@@ -124,6 +124,99 @@ This is the first stable release of the Puppeteer MCP Server, providing a comple
 
 ---
 
+## [1.1.0] - 2025-01-27
+
+### 🚀 Major Feature Release - Multiple Transport Support
+
+This release introduces **multiple MCP transport mechanisms** following the MCP 2025-06-18 specification, providing modern transport options while maintaining backward compatibility.
+
+### ✨ Added
+
+#### 🌐 Streamable HTTP Transport (MCP 2025-06-18)
+- **Modern MCP Specification**: Full compliance with MCP 2025-06-18 transport specification
+- **Advanced Session Management**: UUID-based sessions with automatic cleanup and timeout handling
+- **Resumability Support**: Event store with replay capability using `Last-Event-ID` headers
+- **Multiple HTTP Methods**: POST for messages, GET for SSE streams, DELETE for session termination
+- **DNS Rebinding Protection**: Configurable host and origin validation for security
+- **Real-time Streaming**: SSE streaming with session-based message routing
+
+#### 📡 Stdio Transport
+- **HTTP-based Stdio Simulation**: Stateless operation over HTTP for simple integrations
+- **Process Compatibility**: Simulates stdin/stdout communication patterns
+- **Fast Response Times**: Minimal overhead without session management
+- **Simple Integration**: Single POST endpoint for easy client implementation
+
+#### 🔄 Transport Abstraction Layer
+- **Transport Factory Pattern**: Unified creation and management of multiple transport types
+- **Transport Manager**: Centralized request routing and transport lifecycle management
+- **Type-safe Implementation**: Comprehensive TypeScript types for all transport mechanisms
+- **Automatic Cleanup**: Intelligent transport cleanup with configurable timeouts
+
+#### 📊 Enhanced Monitoring
+- **Transport Statistics**: Detailed metrics for active transports and sessions
+- **Health Checks**: Transport-specific health monitoring and status reporting
+- **Debug Logging**: Comprehensive logging for transport operations and lifecycle events
+- **Performance Metrics**: Session duration, transport usage, and cleanup statistics
+
+### 🔧 Technical Implementation
+
+#### New Endpoints
+- **`POST /http`**: Streamable HTTP transport message handling and session initialization
+- **`GET /http`**: SSE stream establishment with resumability support
+- **`DELETE /http`**: Session termination and cleanup
+- **`POST /stdio`**: Stateless stdio transport simulation
+- **`GET /stats`**: Transport statistics and monitoring
+- **`GET /health`**: Enhanced health checks with transport status
+
+#### Architecture Components
+- **`src/types/transport.ts`**: Transport abstraction types and interfaces
+- **`src/services/transport-factory.ts`**: Transport creation and lifecycle management
+- **`src/services/transport-manager.ts`**: Multi-transport request handling and routing
+- **`src/routes/transports.ts`**: New transport endpoint implementations
+
+#### Session Management
+- **UUID Generation**: Cryptographically secure session identifiers
+- **Session Timeout**: Configurable session expiration (default: 30 minutes)
+- **Automatic Cleanup**: Periodic cleanup of inactive sessions and transports
+- **Session Validation**: Comprehensive session ID validation and security checks
+
+### 🔒 Security Enhancements
+
+- **Consistent Authentication**: API key authentication across all transport mechanisms
+- **Session Security**: Secure session ID generation and validation
+- **DNS Rebinding Protection**: Optional protection against DNS rebinding attacks
+- **Origin Validation**: Configurable allowed origins for enhanced security
+- **Transport Isolation**: Isolated transport instances with proper cleanup
+
+### 📚 Documentation Updates
+
+- **Updated README.md**: Comprehensive transport documentation and usage examples
+- **Enhanced Technical Specification**: Detailed transport architecture and implementation
+- **New Transport Guide**: Complete guide for all transport mechanisms with examples
+- **Updated Implementation Guide**: Transport implementation patterns and best practices
+- **Migration Documentation**: Guide for upgrading from legacy SSE to modern transports
+
+### 🔄 Backward Compatibility
+
+- **Legacy SSE Support**: Full backward compatibility with existing MCP clients
+- **Existing API Preservation**: All existing endpoints and functionality maintained
+- **Gradual Migration**: Clients can migrate to new transports at their own pace
+- **Configuration Compatibility**: Existing environment variables continue to work
+
+### 📊 Performance Improvements
+
+- **Transport Efficiency**: Optimized transport creation and management
+- **Memory Management**: Improved cleanup and resource management
+- **Session Optimization**: Efficient session storage and retrieval
+- **Reduced Overhead**: Streamlined request processing for all transport types
+
+### 🐛 Bug Fixes
+
+- **Session Cleanup**: Fixed potential memory leaks in session management
+- **Error Handling**: Improved error propagation across transport layers
+- **Connection Stability**: Enhanced connection handling and recovery
+- **Resource Management**: Better cleanup of transport resources
+
 ## [Unreleased]
 
 ### 🚧 In Development
@@ -155,6 +248,7 @@ This is the first stable release of the Puppeteer MCP Server, providing a comple
 
 | Version | Release Date | Major Changes |
 |---------|-------------|---------------|
+| 1.1.0   | 2025-01-27  | Multiple transport support (MCP 2025-06-18) |
 | 1.0.0   | 2024-01-01  | Initial stable release |
 
 ## Migration Guides

@@ -8,7 +8,9 @@
 [![Build Status](https://github.com/sultannaufal/puppeteer-mcp-server/workflows/CI/badge.svg)](https://github.com/sultannaufal/puppeteer-mcp-server/actions)
 [![MCP Protocol](https://img.shields.io/badge/MCP-2.0-orange.svg)](https://modelcontextprotocol.io/)
 
-A **self-hosted Puppeteer MCP (Model Context Protocol) server** with remote SSE access, API key authentication, and Docker deployment. This server provides **16 comprehensive Puppeteer tools** including advanced mouse interactions and authentication cookie management, with enhanced security, monitoring, and production-ready features.
+A **self-hosted Puppeteer MCP (Model Context Protocol) server** with **multiple transport support**, API key authentication, and Docker deployment. This server provides **16 comprehensive Puppeteer tools** including advanced mouse interactions and authentication cookie management, with enhanced security, monitoring, and production-ready features.
+
+**🚀 Now supports MCP 2025-06-18 specification with modern transport mechanisms!**
 
 ## 🌟 Features
 
@@ -36,10 +38,16 @@ A **self-hosted Puppeteer MCP (Model Context Protocol) server** with remote SSE 
 - **`puppeteer_set_cookies`** - Set authentication cookies (session tokens, JWT, OAuth)
 - **`puppeteer_delete_cookies`** - Delete cookies for logout and cleanup scenarios
 
+### 🚀 **Multiple Transport Support**
+- **🌐 Streamable HTTP Transport** - Modern MCP 2025-06-18 specification with session management and resumability
+- **🔄 Legacy SSE Transport** - Backward compatibility with existing clients
+- **🔀 Transport Abstraction** - Unified interface supporting multiple transport mechanisms
+- **📊 Session Management** - Advanced session handling with automatic cleanup
+
 ### 🚀 **Production Ready**
 - **Docker Containerization** - Multi-stage builds with optimization
-- **API Key Authentication** - Bearer token security
-- **Server-Sent Events (SSE)** - Real-time MCP communication
+- **API Key Authentication** - Bearer token security across all transports
+- **Real-time Communication** - Multiple transport protocols (HTTP, SSE)
 - **Rate Limiting** - Configurable request throttling
 - **Health Monitoring** - Built-in health check endpoints
 - **Comprehensive Logging** - Structured logging with Winston
@@ -209,7 +217,75 @@ All API endpoints (except health checks) require Bearer token authentication:
 Authorization: Bearer your-api-key-here
 ```
 
-### Endpoints
+### Transport Endpoints
+
+#### 🌐 Streamable HTTP Transport (Recommended)
+**Modern MCP 2025-06-18 specification with session management**
+
+```http
+# Initialize session
+POST /http
+Content-Type: application/json
+Authorization: Bearer your-api-key
+
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "initialize",
+  "params": {
+    "protocolVersion": "2024-11-05",
+    "capabilities": {},
+    "clientInfo": {"name": "client", "version": "1.0"}
+  }
+}
+
+# Use tools with session
+POST /http
+Content-Type: application/json
+Authorization: Bearer your-api-key
+Mcp-Session-Id: session-id-from-response
+
+{
+  "jsonrpc": "2.0",
+  "id": 2,
+  "method": "tools/call",
+  "params": {
+    "name": "puppeteer_navigate",
+    "arguments": {"url": "https://example.com"}
+  }
+}
+
+# Establish SSE stream for real-time updates
+GET /http
+Authorization: Bearer your-api-key
+Mcp-Session-Id: session-id
+Accept: text/event-stream
+
+# Terminate session
+DELETE /http
+Authorization: Bearer your-api-key
+Mcp-Session-Id: session-id
+```
+
+#### 🔄 Legacy SSE Transport
+**Backward compatibility with existing clients**
+
+```http
+# Establish SSE connection
+GET /sse
+Authorization: Bearer your-api-key
+
+# Send messages
+POST /messages?sessionId=session-id
+Content-Type: application/json
+Authorization: Bearer your-api-key
+
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "tools/list"
+}
+```
 
 #### Health Check
 ```http
@@ -226,41 +302,26 @@ GET /health
 }
 ```
 
-#### MCP Protocol Endpoint
+#### Transport Statistics
 ```http
-POST /mcp
-Content-Type: application/json
+GET /stats
 Authorization: Bearer your-api-key
 ```
 
-**List Available Tools:**
+**Response:**
 ```json
 {
-  "jsonrpc": "2.0",
-  "id": 1,
-  "method": "tools/list"
+  "serverInfo": {
+    "name": "puppeteer-mcp-server",
+    "version": "1.0.0",
+    "supportedTransports": ["sse", "streamable_http"]
+  },
+  "transports": {
+    "activeTransports": 2,
+    "activeSessions": 1
+  },
+  "timestamp": "2024-01-01T00:00:00.000Z"
 }
-```
-
-**Execute Tool:**
-```json
-{
-  "jsonrpc": "2.0",
-  "id": 2,
-  "method": "tools/call",
-  "params": {
-    "name": "puppeteer_navigate",
-    "arguments": {
-      "url": "https://example.com"
-    }
-  }
-}
-```
-
-#### Server-Sent Events (SSE)
-```http
-GET /sse
-Authorization: Bearer your-api-key
 ```
 
 ### Tool Examples
@@ -656,10 +717,13 @@ puppeteer-mcp-server/
 │   │   └── index.ts        # Tool exports
 │   ├── services/           # Core services
 │   │   ├── browser.ts      # Browser lifecycle management
-│   │   └── mcp-server.ts   # MCP server implementation
+│   │   ├── mcp-server.ts   # MCP server implementation
+│   │   ├── transport-factory.ts # 🚀 Transport creation and management
+│   │   └── transport-manager.ts # 🚀 Multi-transport request handling
 │   ├── routes/             # HTTP route handlers
 │   │   ├── health.ts       # Health check endpoints
-│   │   └── mcp.ts          # MCP protocol endpoints
+│   │   ├── mcp.ts          # Legacy MCP protocol endpoints
+│   │   └── transports.ts   # 🚀 New transport endpoints (/http)
 │   ├── middleware/         # Express middleware
 │   │   └── auth.ts         # Authentication middleware
 │   ├── utils/              # Utility functions
@@ -670,7 +734,8 @@ puppeteer-mcp-server/
 │   ├── types/              # TypeScript type definitions
 │   │   ├── mcp.ts          # MCP protocol types
 │   │   ├── puppeteer.ts    # Puppeteer tool types
-│   │   └── server.ts       # Server types
+│   │   ├── server.ts       # Server types
+│   │   └── transport.ts    # 🚀 Transport abstraction types
 │   ├── app.ts              # Express application setup
 │   └── server.ts           # Server entry point
 ├── dist/                   # Compiled JavaScript output

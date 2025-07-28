@@ -1,7 +1,7 @@
 # Puppeteer MCP Server - Technical Specification
 
 ## Overview
-This document outlines the technical specification for a self-hosted, remote Puppeteer MCP (Model Context Protocol) server with API key authentication and Docker deployment.
+This document outlines the technical specification for a self-hosted, remote Puppeteer MCP (Model Context Protocol) server with **multiple transport support**, API key authentication, and Docker deployment. The server now supports the modern MCP 2025-06-18 specification with Streamable HTTP transport alongside legacy SSE and stdio transports.
 
 ## Architecture
 
@@ -33,8 +33,30 @@ graph TB
 ## MCP Protocol Implementation
 
 ### Transport Layer
+The server supports **three transport mechanisms** for maximum compatibility:
+
+#### 1. Streamable HTTP Transport (MCP 2025-06-18) - **Recommended**
+- **Protocol**: HTTP with optional SSE streaming
+- **Endpoints**:
+  - `POST /http` - JSON-RPC message handling
+  - `GET /http` - SSE stream establishment
+  - `DELETE /http` - Session termination
+- **Features**: Session management, resumability, event store
+- **Authentication**: `Authorization: Bearer <api_key>`
+- **Session Header**: `Mcp-Session-Id: <session_id>`
+
+#### 2. Stdio Transport
+- **Protocol**: HTTP-based stdio simulation
+- **Endpoint**: `POST /stdio`
+- **Features**: Stateless operation, simplified usage
+- **Authentication**: `Authorization: Bearer <api_key>`
+- **Content-Type**: `application/json`
+
+#### 3. Legacy SSE Transport - **Backward Compatibility**
 - **Protocol**: HTTP with Server-Sent Events (SSE)
-- **Endpoint**: `GET /sse`
+- **Endpoints**:
+  - `GET /sse` - SSE connection
+  - `POST /messages` - Message sending
 - **Authentication**: `Authorization: Bearer <api_key>`
 - **Content-Type**: `text/event-stream`
 
@@ -188,11 +210,44 @@ DOCKER_CONTAINER=puppeteer-mcp
 
 ## API Endpoints
 
-### SSE Endpoint
+### Streamable HTTP Transport Endpoints
 ```
+# Initialize session and send messages
+POST /http
+Authorization: Bearer <api_key>
+Content-Type: application/json
+Mcp-Session-Id: <session_id> (after initialization)
+
+# Establish SSE stream
+GET /http
+Authorization: Bearer <api_key>
+Mcp-Session-Id: <session_id>
+Accept: text/event-stream
+
+# Terminate session
+DELETE /http
+Authorization: Bearer <api_key>
+Mcp-Session-Id: <session_id>
+```
+
+### Stdio Transport Endpoint
+```
+POST /stdio
+Authorization: Bearer <api_key>
+Content-Type: application/json
+```
+
+### Legacy SSE Endpoints
+```
+# SSE connection
 GET /sse
 Authorization: Bearer <api_key>
 Accept: text/event-stream
+
+# Message sending
+POST /messages?sessionId=<session_id>
+Authorization: Bearer <api_key>
+Content-Type: application/json
 ```
 
 ### Health Check
@@ -201,11 +256,32 @@ GET /health
 Response: {"status": "ok", "timestamp": "2024-01-01T00:00:00Z"}
 ```
 
-### Metrics (Optional)
+### Transport Statistics
 ```
-GET /metrics
+GET /stats
 Authorization: Bearer <api_key>
-Response: Basic server metrics
+Response: {
+  "serverInfo": {
+    "supportedTransports": ["sse", "streamable_http", "stdio"]
+  },
+  "transports": {
+    "activeTransports": 2,
+    "activeSessions": 1
+  }
+}
+```
+
+### Transport Health Check
+```
+GET /health
+Response: {
+  "status": "healthy",
+  "transports": {
+    "sse": "available",
+    "streamable_http": "available",
+    "stdio": "available"
+  }
+}
 ```
 
 ## Error Handling

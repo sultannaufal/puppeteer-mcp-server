@@ -1,6 +1,122 @@
 # Implementation Guide
 
-This guide provides detailed implementation details and code examples for the Puppeteer MCP Server.
+This guide provides detailed implementation details and code examples for the Puppeteer MCP Server with **multiple transport support**.
+
+## 🚀 New Transport Architecture
+
+The server now supports three transport mechanisms following the MCP 2025-06-18 specification:
+
+1. **Streamable HTTP Transport** - Modern MCP specification with session management
+## Transport Implementation Patterns
+
+### 1. Streamable HTTP Transport (MCP 2025-06-18)
+
+**Modern transport with session management and resumability:**
+
+```typescript
+// Transport Factory Pattern
+class TransportFactory {
+  async createTransport(config: StreamableHTTPTransportConfig): Promise<TransportInstance> {
+    const transport = new StreamableHTTPServerTransport({
+      sessionIdGenerator: () => randomUUID(),
+      enableResumability: true,
+      eventStore: new InMemoryEventStore(),
+      onsessioninitialized: (sessionId) => {
+        logger.info('Session initialized', { sessionId });
+      }
+    });
+    
+    return {
+      id: randomUUID(),
+      type: TransportType.STREAMABLE_HTTP,
+      transport,
+      sessionId: transport.sessionId,
+      createdAt: new Date(),
+      lastActivity: new Date()
+    };
+  }
+}
+
+// Usage Example
+POST /http
+Authorization: Bearer api-key
+Content-Type: application/json
+
+{
+  "jsonrpc": "2.0",
+  "method": "initialize", 
+  "params": {
+    "protocolVersion": "2024-11-05",
+    "capabilities": {},
+    "clientInfo": {"name": "client", "version": "1.0"}
+  },
+  "id": 1
+}
+```
+
+### 2. Stdio Transport Implementation
+
+**HTTP-based stdio simulation for stateless operation:**
+
+```typescript
+// Stdio Transport Handler
+async function handleStdioRequest(req: Request, res: Response): Promise<void> {
+  const config: StdioTransportConfig = {
+    type: TransportType.STDIO,
+    enableHttpWrapper: true
+  };
+  
+  const transport = await transportFactory.createTransport(config);
+  
+  try {
+    const mcpServer = createMCPServer();
+    await mcpServer.connect(transport.transport);
+    
+    // Process the JSON-RPC message
+    if (transport.transport.onmessage) {
+      transport.transport.onmessage(req.body);
+    }
+    
+    res.json({
+      jsonrpc: '2.0',
+      id: req.body?.id || null,
+      result: { message: 'Processed successfully' }
+    });
+  } finally {
+    await transport.transport.close();
+  }
+}
+```
+
+### 3. Transport Abstraction Layer
+
+**Unified interface for multiple transport types:**
+
+```typescript
+interface ITransportManager {
+  handleRequest(req: Request, res: Response, type: TransportType): Promise<void>;
+  getActiveTransports(): Map<string, TransportInstance>;
+  closeTransport(id: string): Promise<void>;
+}
+
+class TransportManager implements ITransportManager {
+  async handleRequest(req: Request, res: Response, type: TransportType) {
+    switch (type) {
+      case TransportType.STREAMABLE_HTTP:
+        await this.handleStreamableHTTPRequest(req, res);
+        break;
+      case TransportType.STDIO:
+        await this.handleStdioRequest(req, res);
+        break;
+      case TransportType.SSE:
+        await this.handleSSERequest(req, res);
+        break;
+    }
+  }
+}
+```
+2. **Stdio Transport** - HTTP-based stdio simulation for stateless operation
+3. **Legacy SSE Transport** - Backward compatibility with existing clients
 
 ## Key Technical Decisions
 

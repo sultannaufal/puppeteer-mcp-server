@@ -59,6 +59,9 @@ export interface ServerConfig {
     maxWidth: number;
     maxHeight: number;
     quality: number;
+    enableBinaryServing: boolean;
+    binaryUrlTtl: number; // TTL in seconds for binary image URLs
+    cleanupInterval: number; // Cleanup interval in milliseconds
   };
   
   // Performance Settings
@@ -67,6 +70,7 @@ export interface ServerConfig {
     browserRestartThreshold: number;
     memoryLimitMB: number;
   };
+  
 }
 
 // Express Request Extensions

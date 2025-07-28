@@ -17,6 +17,7 @@ export const commonSchemas = {
   width: Joi.number().integer().min(100).max(4096).optional(),
   height: Joi.number().integer().min(100).max(4096).optional(),
   encoded: Joi.boolean().optional(),
+  useBinaryUrl: Joi.boolean().optional(),
   allowDangerous: Joi.boolean().optional(),
 };
 
@@ -47,6 +48,7 @@ export const toolSchemas = {
     width: commonSchemas.width.default(800),
     height: commonSchemas.height.default(600),
     encoded: commonSchemas.encoded.default(false),
+    useBinaryUrl: commonSchemas.useBinaryUrl.default(false),
   }),
 
   puppeteer_click: Joi.object({

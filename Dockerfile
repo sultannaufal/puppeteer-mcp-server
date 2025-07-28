@@ -94,6 +94,9 @@ RUN mkdir -p logs && chown -R pptruser:pptruser logs
 # Create screenshots directory (optional)
 RUN mkdir -p screenshots && chown -R pptruser:pptruser screenshots
 
+# Create temp directory for binary image storage
+RUN mkdir -p temp/images && chown -R pptruser:pptruser temp
+
 # Switch to non-root user
 USER pptruser
 

@@ -9,6 +9,7 @@ import { ScreenshotParams } from '@/types/puppeteer';
 import { validate } from '@/utils/validation';
 import { browserLogger } from '@/utils/logger';
 import { getConfig } from '@/utils/config';
+import { imageStorage } from '@/services/image-storage';
 
 const config = getConfig();
 
@@ -45,6 +46,11 @@ export class ScreenshotTool extends BaseTool {
       encoded: {
         type: 'boolean',
         description: 'If true, capture the screenshot as a base64-encoded data URI (as text). If false, return raw image data.',
+        default: false,
+      },
+      useBinaryUrl: {
+        type: 'boolean',
+        description: 'If true and binary serving is enabled, return a URL to the binary image instead of base64 data. More efficient for HTTP transport.',
         default: false,
       },
     },
@@ -128,21 +134,58 @@ export class ScreenshotTool extends BaseTool {
       // Log screenshot
       browserLogger.screenshot(sanitizedName, context.sessionId, screenshotBuffer.length);
 
-      // Return result based on encoded parameter
+      // Determine response format based on parameters
+      const shouldUseBinaryUrl = validatedParams.useBinaryUrl &&
+                                 config.screenshot.enableBinaryServing;
+
+      let message = `Screenshot '${sanitizedName}' captured successfully`;
+      if (validatedParams.selector) {
+        message += ` (element: ${validatedParams.selector})`;
+      } else {
+        message += ' (full page)';
+      }
+      message += `\nSize: ${Math.round(screenshotBuffer.length / 1024)}KB`;
+      message += `\nDuration: ${duration}ms`;
+      message += `\nPage: ${title} (${url})`;
+
+      if (shouldUseBinaryUrl) {
+        // Store image and return URL reference
+        try {
+          const { url: imageUrl, expiresAt } = await imageStorage.storeImage(
+            screenshotBuffer,
+            context.sessionId,
+            sanitizedName,
+            'image/png'
+          );
+
+          message += `\nBinary URL: ${imageUrl}`;
+          message += `\nExpires: ${expiresAt.toISOString()}`;
+          message += `\nFormat: Binary PNG (more efficient than base64)`;
+
+          return {
+            content: [
+              {
+                type: 'text',
+                text: message,
+              },
+              {
+                type: 'text',
+                text: `Binary Image URL: ${imageUrl}`,
+              }
+            ],
+            isError: false,
+          };
+        } catch (storageError) {
+          // Fall back to base64 if storage fails
+          browserLogger.error('screenshot-storage', storageError instanceof Error ? storageError : new Error(String(storageError)), context.sessionId);
+          message += `\nWarning: Binary storage failed, falling back to base64`;
+        }
+      }
+
       if (validatedParams.encoded) {
         // Return as base64 data URI
         const base64Data = screenshotBuffer.toString('base64');
         const dataUri = `data:image/png;base64,${base64Data}`;
-        
-        let message = `Screenshot '${sanitizedName}' captured successfully`;
-        if (validatedParams.selector) {
-          message += ` (element: ${validatedParams.selector})`;
-        } else {
-          message += ' (full page)';
-        }
-        message += `\nSize: ${Math.round(screenshotBuffer.length / 1024)}KB`;
-        message += `\nDuration: ${duration}ms`;
-        message += `\nPage: ${title} (${url})`;
 
         return {
           content: [
@@ -158,19 +201,8 @@ export class ScreenshotTool extends BaseTool {
           isError: false,
         };
       } else {
-        // Return as image content
+        // Return as image content (base64 in MCP format)
         const base64Data = screenshotBuffer.toString('base64');
-        
-        let message = `Screenshot '${sanitizedName}' captured successfully`;
-        if (validatedParams.selector) {
-          message += ` (element: ${validatedParams.selector})`;
-        } else {
-          message += ' (full page)';
-        }
-        message += `\nSize: ${Math.round(screenshotBuffer.length / 1024)}KB`;
-        message += `\nDuration: ${duration}ms`;
-        message += `\nPage: ${title} (${url})`;
-
         return this.createImageResult(message, base64Data, 'image/png');
       }
 

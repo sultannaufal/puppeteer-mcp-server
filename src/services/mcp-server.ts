@@ -89,17 +89,37 @@ export function createMCPServer(): Server {
         toolName: name,
         sessionId: toolContext.sessionId,
         error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
       });
 
-      return {
-        content: [
-          {
-            type: 'text' as const,
-            text: `Tool execution failed: ${error instanceof Error ? error.message : String(error)}`,
-          },
-        ],
-        isError: true,
-      };
+      // Don't let tool execution errors crash the server
+      try {
+        return {
+          content: [
+            {
+              type: 'text' as const,
+              text: `Tool execution failed: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+          isError: true,
+        };
+      } catch (responseError) {
+        // Last resort error handling
+        logger.error('Failed to create error response', {
+          originalError: error instanceof Error ? error.message : String(error),
+          responseError: responseError instanceof Error ? responseError.message : String(responseError),
+        });
+        
+        return {
+          content: [
+            {
+              type: 'text' as const,
+              text: 'Internal server error occurred during tool execution',
+            },
+          ],
+          isError: true,
+        };
+      }
     }
   });
 
