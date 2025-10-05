@@ -79,13 +79,16 @@ A **self-hosted Puppeteer MCP (Model Context Protocol) server** with **multiple 
 git clone https://github.com/sultannaufal/puppeteer-mcp-server.git
 cd puppeteer-mcp-server
 
-# Start with Docker Compose
-docker-compose up -d
+# Create .env file with your API key
+echo "API_KEY=your-secure-api-key-here" > .env
 
-# Test the server
-curl -H "Authorization: Bearer test-api-key-12345" \
+# Start with Docker Compose
+docker compose --env-file .env up -d
+
+# Test the server (use the same API key)
+curl -H "Authorization: Bearer your-secure-api-key-here" \
      -H "Content-Type: application/json" \
-     -X POST http://localhost:3000/mcp \
+     -X POST http://localhost:3000/http \
      -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'
 ```
 
@@ -286,6 +289,23 @@ Authorization: Bearer your-api-key
   "method": "tools/list"
 }
 ```
+
+### Using with Claude Code
+
+To add this MCP server to Claude Code:
+
+```bash
+# Add the server with HTTP transport
+claude mcp add puppeteer http://localhost:3000/http \
+  --scope user \
+  --transport http \
+  --header "Authorization: Bearer your-api-key-here"
+
+# Verify the server was added
+claude mcp list
+```
+
+Replace `your-api-key-here` with your actual API key from the `.env` file. The server will be available in your next Claude Code session.
 
 #### Health Check
 ```http
@@ -584,11 +604,14 @@ curl https://your-app.coolify.domain.com/health
 
 #### Using Docker Compose
 ```bash
+# Ensure .env file exists with API_KEY set
+# Create it if needed: echo "API_KEY=your-secure-api-key-here" > .env
+
 # Production deployment
-docker-compose up -d
+docker compose --env-file .env up -d
 
 # Development with hot reload
-docker-compose -f docker-compose.dev.yml up
+docker compose --env-file .env -f docker-compose.dev.yml up
 ```
 
 #### Using Docker directly
