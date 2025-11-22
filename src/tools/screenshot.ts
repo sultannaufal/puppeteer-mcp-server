@@ -29,17 +29,17 @@ export class ScreenshotTool extends BaseTool {
       },
       selector: {
         type: 'string',
-        description: 'CSS selector for element to screenshot (optional, full page if not provided)',
+        description: 'CSS selector for element to screenshot (optional, viewport/full page if not provided)',
       },
       width: {
         type: 'number',
-        description: 'Width in pixels (default: 800)',
+        description: 'Viewport width in pixels. When specified, captures viewport only instead of full page (default: 800)',
         minimum: 100,
         maximum: 4096,
       },
       height: {
         type: 'number',
-        description: 'Height in pixels (default: 600)',
+        description: 'Viewport height in pixels. When specified, captures viewport only instead of full page (default: 600)',
         minimum: 100,
         maximum: 4096,
       },
@@ -118,13 +118,14 @@ export class ScreenshotTool extends BaseTool {
         screenshotInfo.selector = validatedParams.selector;
         screenshotInfo.type = 'element';
       } else {
-        // Screenshot full page
+        // Screenshot full page or viewport
+        const useFullPage = !validatedParams.width && !validatedParams.height;
         screenshotBuffer = await this.safeScreenshot(page, {
           type: 'png',
-          fullPage: true,
+          fullPage: useFullPage,
         }) as Buffer;
 
-        screenshotInfo.type = 'fullpage';
+        screenshotInfo.type = useFullPage ? 'fullpage' : 'viewport';
       }
 
       const duration = Date.now() - startTime;
@@ -142,7 +143,7 @@ export class ScreenshotTool extends BaseTool {
       if (validatedParams.selector) {
         message += ` (element: ${validatedParams.selector})`;
       } else {
-        message += ' (full page)';
+        message += screenshotInfo.type === 'fullpage' ? ' (full page)' : ' (viewport)';
       }
       message += `\nSize: ${Math.round(screenshotBuffer.length / 1024)}KB`;
       message += `\nDuration: ${duration}ms`;
