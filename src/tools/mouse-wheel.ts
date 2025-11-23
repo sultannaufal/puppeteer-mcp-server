@@ -97,7 +97,7 @@ export class MouseWheelTool extends BaseTool {
       });
 
       // Wait for scroll to complete
-      await page.waitForTimeout(200);
+      await new Promise(resolve => setTimeout(resolve, 200));
 
       const duration = Date.now() - startTime;
 

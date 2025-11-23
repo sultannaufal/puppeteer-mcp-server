@@ -112,7 +112,7 @@ export class MouseDragTool extends BaseTool {
       
       // Step 3: Add small delay to ensure drag is recognized
       if (validatedParams.delay && validatedParams.delay > 0) {
-        await page.waitForTimeout(Math.min(validatedParams.delay, 100));
+        await new Promise(resolve => setTimeout(resolve, Math.min(validatedParams.delay ?? 0, 100)));
       }
       
       // Step 4: Move to end position with steps
@@ -124,7 +124,7 @@ export class MouseDragTool extends BaseTool {
       
       // Step 5: Add delay between steps if specified
       if (validatedParams.delay && validatedParams.delay > 100) {
-        await page.waitForTimeout(validatedParams.delay - 100);
+        await new Promise(resolve => setTimeout(resolve, (validatedParams.delay ?? 0) - 100));
       }
       
       // Step 6: Release mouse button
@@ -132,7 +132,7 @@ export class MouseDragTool extends BaseTool {
 
       // Wait for potential navigation or page changes
       try {
-        await page.waitForTimeout(500); // Brief wait for any immediate changes
+        await new Promise(resolve => setTimeout(resolve, 500)); // Brief wait for any immediate changes
       } catch (error) {
         // Ignore timeout errors
       }

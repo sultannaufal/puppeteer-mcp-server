@@ -104,7 +104,7 @@ export class MouseClickTool extends BaseTool {
 
       // Wait for potential navigation or page changes
       try {
-        await page.waitForTimeout(500); // Brief wait for any immediate changes
+        await new Promise(resolve => setTimeout(resolve, 500)); // Brief wait for any immediate changes
       } catch (error) {
         // Ignore timeout errors
       }

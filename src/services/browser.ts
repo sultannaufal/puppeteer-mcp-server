@@ -54,7 +54,7 @@ class BrowserManager {
       logger.error('Failed to initialize browser manager', {
         error: error instanceof Error ? error.message : String(error),
       });
-      throw new BrowserError('Failed to initialize browser manager', { originalError: error });
+      throw new BrowserError('Failed to initialize browser manager', { originalError: error instanceof Error ? error : new Error(String(error)) });
     }
   }
 
@@ -113,7 +113,7 @@ class BrowserManager {
         sessionId,
         error: error instanceof Error ? error.message : String(error),
       });
-      throw new BrowserError('Failed to create page', { sessionId, originalError: error });
+      throw new BrowserError('Failed to create page', { sessionId, originalError: error instanceof Error ? error : new Error(String(error)) });
     }
   }
 
@@ -231,7 +231,7 @@ class BrowserManager {
         error: error instanceof Error ? error.message : String(error),
         reason,
       });
-      throw new BrowserError('Failed to restart browser', { reason, originalError: error });
+      throw new BrowserError('Failed to restart browser', { reason, originalError: error instanceof Error ? error : new Error(String(error)) });
     }
   }
 
@@ -317,7 +317,7 @@ class BrowserManager {
         this.browser = null;
         // Auto-restart browser
         this.restartBrowser('Browser disconnected').catch(error => {
-          logger.error('Failed to auto-restart browser', { error: error.message });
+        logger.error('Failed to auto-restart browser', { error: error instanceof Error ? error.message : String(error) });
         });
       });
 
@@ -363,11 +363,11 @@ class BrowserManager {
    */
   private setupPageEventListeners(page: Page, sessionId: string): void {
     page.on('error', (error) => {
-      browserLogger.error('page-error', error, sessionId);
+      browserLogger.error('page-error', error instanceof Error ? error : new Error(String(error)), sessionId);
     });
 
     page.on('pageerror', (error) => {
-      browserLogger.error('page-error', error, sessionId);
+      browserLogger.error('page-error', error instanceof Error ? error : new Error(String(error)), sessionId);
     });
 
     page.on('console', (msg) => {
